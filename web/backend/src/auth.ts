@@ -50,6 +50,12 @@ authRoutes.get("/github/callback", async (req, res, next) => {
       },
     }).then((r) => r.json() as any);
 
+    // Check if user already exists to distinguish signup from login
+    const existingUser = await prisma.user.findUnique({
+      where: { githubLogin: me.login },
+    });
+    const isNewUser = !existingUser;
+
     const user = await prisma.user.upsert({
       where: { githubLogin: me.login },
       update: { accessToken: tokRes.access_token },
@@ -65,7 +71,10 @@ authRoutes.get("/github/callback", async (req, res, next) => {
       secure: false,
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
-    res.redirect(`${process.env.FRONTEND_ORIGIN}/download`);
+    const redirectUrl = isNewUser
+      ? `${process.env.FRONTEND_ORIGIN}/download?signup=1`
+      : `${process.env.FRONTEND_ORIGIN}/download`;
+    res.redirect(redirectUrl);
   } catch (e) {
     next(e);
   }

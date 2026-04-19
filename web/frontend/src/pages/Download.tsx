@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Apple, ArrowRight, Check, Copy, Terminal } from "lucide-react";
 import { Navbar } from "@/components/landing/Navbar";
 import { Footer } from "@/components/landing/Footer";
 import { RequireAuth } from "@/components/RequireAuth";
+import posthog from "posthog-js";
 
 const REPO = "ishaan812/reflex.md";
 const RELEASE_PAGE = `https://github.com/${REPO}/releases/latest`;
@@ -37,7 +38,29 @@ export function Download() {
 function DownloadContent({ login }: { login: string }) {
   const [copied, setCopied] = useState(false);
 
+  useEffect(() => {
+    // Identify the user in PostHog
+    posthog.identify(login, { github_login: login });
+
+    // Track signup if redirected from OAuth with ?signup=1
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("signup") === "1") {
+      posthog.capture("user_signed_up", { github_login: login });
+      // Clean up the URL without reloading
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+  }, [login]);
+
+  const handleDownload = () => {
+    posthog.capture("download_clicked", {
+      github_login: login,
+      platform: "macos",
+      arch: "arm64",
+    });
+  };
+
   const copyLink = async () => {
+    posthog.capture("download_link_copied", { github_login: login });
     try {
       await navigator.clipboard.writeText(DMG_ARM64);
       setCopied(true);
@@ -100,6 +123,7 @@ function DownloadContent({ login }: { login: string }) {
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-6">
             <a
               href={DMG_ARM64}
+              onClick={handleDownload}
               className="btn-clip inline-flex items-center gap-2 py-4 px-8 bg-gradient-to-r from-green to-green-dim text-bg-primary font-mono text-sm font-bold no-underline border-none cursor-pointer tracking-[1px] uppercase transition-all duration-200 hover:shadow-[0_0_30px_rgba(0,255,65,0.5)] hover:scale-[1.03] group"
               aria-label="Download Reflex for macOS Apple Silicon"
             >

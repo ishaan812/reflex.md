@@ -1,0 +1,39 @@
+{
+  "cli_version": "0.5.5",
+  "checkpoint_id": "76f50504cab0",
+  "strategy": "manual-commit",
+  "branch": "master",
+  "checkpoints_count": 13,
+  "files_touched": [
+    "electron/demo-pr.mjs",
+    "electron/src/main/config.ts",
+    "electron/src/main/db.ts",
+    "electron/src/main/github.ts",
+    "electron/src/main/index.ts",
+    "electron/src/main/playground.ts",
+    "electron/src/main/sidecar.ts",
+    "electron/src/preload/index.ts",
+    "electron/src/renderer/src/App.tsx",
+    "electron/src/renderer/src/components/JudgePanel.tsx",
+    "electron/src/renderer/src/components/PlaygroundPanel.tsx",
+    "electron/src/renderer/src/components/RepoInsightView.tsx",
+    "electron/src/renderer/src/components/SessionView.tsx",
+    "electron/src/renderer/src/components/SettingsModal.tsx",
+    "electron/src/renderer/src/components/TeamPanel.tsx"
+  ],
+  "sessions": [
+    {
+      "metadata": "/76/f50504cab0/0/metadata.json",
+      "transcript": "/76/f50504cab0/0/full.jsonl",
+      "content_hash": "/76/f50504cab0/0/content_hash.txt",
+      "prompt": "/76/f50504cab0/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 275,
+    "cache_creation_tokens": 3200287,
+    "cache_read_tokens": 122855683,
+    "output_tokens": 190912,
+    "api_call_count": 195
+  }
+}

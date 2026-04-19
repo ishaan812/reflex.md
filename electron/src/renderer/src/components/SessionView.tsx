@@ -5,6 +5,7 @@ import type { SessionRating } from "../../../shared/turn";
 import type { SessionJudgment } from "../../../shared/judge";
 import { RatingPanel } from "./RatingPanel";
 import { JudgePanel } from "./JudgePanel";
+import { PlaygroundPanel } from "./PlaygroundPanel";
 
 interface Props {
   session: SessionDetail | null;
@@ -17,6 +18,8 @@ interface Props {
 
 const EMPTY: SessionEntry[] = [];
 
+type SessionTab = "transcript" | "playground";
+
 export function SessionView({
   session,
   rating,
@@ -26,6 +29,7 @@ export function SessionView({
   onJudgmentComputed,
 }: Props): JSX.Element {
   const [hideHousekeeping, setHideHousekeeping] = useState(true);
+  const [activeTab, setActiveTab] = useState<SessionTab>("transcript");
 
   // IMPORTANT: all hooks must run on every render, in the same order.
   // Do NOT early-return before the hooks below; compute against a
@@ -95,32 +99,111 @@ export function SessionView({
         </div>
       </header>
 
-      <RatingPanel rating={rating} />
+      {/* Tabs sit directly under the header so they're always visible,
+          regardless of how tall the rating/judge panels get. */}
+      <nav
+        role="tablist"
+        className="relative z-10 flex shrink-0 gap-1 border-b border-slate-800 bg-slate-950 px-4"
+      >
+        <TabBtn
+          active={activeTab === "transcript"}
+          onClick={() => setActiveTab("transcript")}
+        >
+          Transcript
+          <span className="ml-1.5 text-slate-600">{entries.length}</span>
+        </TabBtn>
+        <TabBtn
+          active={activeTab === "playground"}
+          onClick={() => setActiveTab("playground")}
+        >
+          Playground
+        </TabBtn>
+      </nav>
 
-      <JudgePanel
-        sessionId={session.session_id}
-        judgment={judgment}
-        hasGemini={hasGemini}
-        stale={judgmentStale}
-        onRequested={onJudgmentComputed}
-      />
+      {/* Tab content: exactly one panel is visible at a time via `hidden`
+          (= display:none), which keeps it out of layout completely.
+          The active one is a normal flex child so its width is a clean
+          100% of the parent — no absolute-positioning width quirks. */}
 
-      <div className="min-h-0 flex-1 overflow-y-auto">
-        <ol className="divide-y divide-slate-900">
-          {entries.map((e) => (
-            <li key={e.id}>
-              <EntryRow entry={e} />
-            </li>
-          ))}
-          {entries.length === 0 && (
-            <li className="p-6 text-center text-slate-600">
-              (no visible entries — toggle hide housekeeping off to see raw
-              events)
-            </li>
-          )}
-        </ol>
+      {/* Transcript tab */}
+      <div
+        role="tabpanel"
+        aria-hidden={activeTab !== "transcript"}
+        className={`${
+          activeTab === "transcript" ? "flex" : "hidden"
+        } min-h-0 flex-1 flex-col`}
+      >
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <RatingPanel rating={rating} />
+          <JudgePanel
+            sessionId={session.session_id}
+            judgment={judgment}
+            hasGemini={hasGemini}
+            stale={judgmentStale}
+            onRequested={onJudgmentComputed}
+          />
+          <ol className="divide-y divide-slate-900">
+            {entries.map((e) => (
+              <li key={e.id}>
+                <EntryRow entry={e} />
+              </li>
+            ))}
+            {entries.length === 0 && (
+              <li className="p-6 text-center text-slate-600">
+                (no visible entries — toggle hide housekeeping off to see
+                raw events)
+              </li>
+            )}
+          </ol>
+        </div>
+      </div>
+
+      {/* Playground tab */}
+      <div
+        role="tabpanel"
+        aria-hidden={activeTab !== "playground"}
+        className={`${
+          activeTab === "playground" ? "flex" : "hidden"
+        } min-h-0 flex-1 flex-col`}
+      >
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <PlaygroundPanel
+            sessionId={session.session_id}
+            hasGemini={hasGemini}
+            repo={judgment?.repo ?? null}
+          />
+        </div>
       </div>
     </div>
+  );
+}
+
+function TabBtn({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}): JSX.Element {
+  return (
+    <button
+      type="button"
+      role="tab"
+      aria-selected={active}
+      onClick={onClick}
+      className={`relative cursor-pointer select-none px-4 py-2.5 text-xs font-medium transition ${
+        active
+          ? "text-slate-100"
+          : "text-slate-400 hover:bg-slate-900/60 hover:text-slate-200"
+      }`}
+    >
+      {children}
+      {active && (
+        <span className="absolute inset-x-0 bottom-0 block h-[2px] bg-indigo-500" />
+      )}
+    </button>
   );
 }
 

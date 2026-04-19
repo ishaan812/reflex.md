@@ -16,7 +16,110 @@ import type {
 interface ConfigStatus {
   has_gemini: boolean;
   has_anthropic: boolean;
+  has_github: boolean;
   gemini_model: string;
+  github_token_overrides: string[];
+}
+
+interface GitHubRemote {
+  owner: string;
+  repo: string;
+}
+
+interface OpenPrResult {
+  pr_url: string;
+  pr_number: number;
+  branch: string;
+  target_file: string;
+  action: "created" | "updated" | "replaced-reflex-block";
+}
+
+interface TeamContextFile {
+  path: string;
+  content: string;
+  reflex_block: string | null;
+  sha: string;
+  default_branch: string;
+}
+
+interface TeamHistoryEntry {
+  sha: string;
+  short_sha: string;
+  message: string;
+  headline: string;
+  author_login: string | null;
+  author_name: string;
+  author_avatar: string | null;
+  authored_at: string;
+  html_url: string;
+  path: string;
+}
+
+interface TeamOpenPr {
+  number: number;
+  title: string;
+  html_url: string;
+  author_login: string | null;
+  author_avatar: string | null;
+  branch: string;
+  updated_at: string;
+  draft: boolean;
+}
+
+interface TeamSharedJudgment {
+  path: string;
+  session_id: string;
+  source: string;
+  author_login: string | null;
+  author_avatar: string | null;
+  judge: string;
+  judged_at: string;
+  score: number;
+  summary: string;
+  repo: string | null;
+  issues: Array<{
+    title: string;
+    severity: "low" | "med" | "high";
+    description: string;
+    recurring: boolean;
+  }>;
+  user_patterns: string[];
+  agent_patterns: string[];
+  actionable_advice: string[];
+}
+
+interface PushedJudgmentResult {
+  committed_path: string;
+  sha: string;
+  html_url: string;
+}
+
+interface PlaygroundRow {
+  id: number;
+  session_id: string;
+  role: "user" | "assistant";
+  content: string;
+  ts: string;
+  tokens_in: number | null;
+  tokens_out: number | null;
+  model: string | null;
+}
+
+interface TeamSharedPlayground {
+  path: string;
+  session_id: string;
+  source: string;
+  author_login: string | null;
+  author_avatar: string | null;
+  updated_at: string;
+  messages: Array<{
+    role: "user" | "assistant";
+    content: string;
+    ts: string;
+    model: string | null;
+    tokens_in: number | null;
+    tokens_out: number | null;
+  }>;
 }
 
 const api = {
@@ -60,7 +163,29 @@ const api = {
     gemini_api_key?: string;
     gemini_model?: string;
     anthropic_api_key?: string;
+    github_token?: string;
   }): Promise<ConfigStatus> => ipcRenderer.invoke("reflex:save-config", patch),
+
+  setRepoToken: (
+    ownerRepo: string,
+    token?: string,
+  ): Promise<ConfigStatus> =>
+    ipcRenderer.invoke("reflex:set-repo-token", ownerRepo, token),
+
+  testGemini: (
+    key: string,
+    model?: string,
+  ): Promise<{ ok: boolean; detail: string; tokens?: number }> =>
+    ipcRenderer.invoke("reflex:test-gemini", { key, model }),
+
+  testGitHub: (
+    token: string,
+  ): Promise<{
+    ok: boolean;
+    detail: string;
+    login?: string;
+    scopes?: string[];
+  }> => ipcRenderer.invoke("reflex:test-github", { token }),
 
   getJudgment: (id: string): Promise<SessionJudgment | null> =>
     ipcRenderer.invoke("reflex:get-judgment", id),
@@ -98,6 +223,70 @@ const api = {
     filename?: string,
   ): Promise<string> =>
     ipcRenderer.invoke("reflex:write-repo-context", repo, filename),
+
+  githubDetect: (repo: string): Promise<GitHubRemote | null> =>
+    ipcRenderer.invoke("reflex:github-detect", repo),
+
+  githubOpenPr: (repo: string): Promise<OpenPrResult> =>
+    ipcRenderer.invoke("reflex:github-open-pr", repo),
+
+  githubOpenPrForSession: (
+    sessionId: string,
+    repoOverride?: string,
+  ): Promise<OpenPrResult> =>
+    ipcRenderer.invoke(
+      "reflex:github-open-pr-for-session",
+      sessionId,
+      repoOverride,
+    ),
+
+  teamContext: (repo: string): Promise<TeamContextFile | null> =>
+    ipcRenderer.invoke("reflex:team-context", repo),
+
+  teamHistory: (repo: string): Promise<TeamHistoryEntry[]> =>
+    ipcRenderer.invoke("reflex:team-history", repo),
+
+  teamOpenPrs: (repo: string): Promise<TeamOpenPr[]> =>
+    ipcRenderer.invoke("reflex:team-open-prs", repo),
+
+  teamShareJudgment: (
+    sessionId: string,
+    repoOverride?: string,
+  ): Promise<PushedJudgmentResult> =>
+    ipcRenderer.invoke(
+      "reflex:team-share-judgment",
+      sessionId,
+      repoOverride,
+    ),
+
+  teamFetchJudgments: (repo: string): Promise<TeamSharedJudgment[]> =>
+    ipcRenderer.invoke("reflex:team-fetch-judgments", repo),
+
+  // --- Playground ---
+  playgroundList: (sessionId: string): Promise<PlaygroundRow[]> =>
+    ipcRenderer.invoke("reflex:playground-list", sessionId),
+
+  playgroundSend: (
+    sessionId: string,
+    userMessage: string,
+  ): Promise<PlaygroundRow> =>
+    ipcRenderer.invoke("reflex:playground-send", sessionId, userMessage),
+
+  playgroundClear: (sessionId: string): Promise<number> =>
+    ipcRenderer.invoke("reflex:playground-clear", sessionId),
+
+  teamSharePlayground: (
+    sessionId: string,
+    repoOverride?: string,
+  ): Promise<PushedJudgmentResult> =>
+    ipcRenderer.invoke(
+      "reflex:team-share-playground",
+      sessionId,
+      repoOverride,
+    ),
+
+  teamFetchPlaygrounds: (repo: string): Promise<TeamSharedPlayground[]> =>
+    ipcRenderer.invoke("reflex:team-fetch-playgrounds", repo),
 
   onRepoInsight: (cb: (i: RepoInsight) => void): (() => void) => {
     const handler = (

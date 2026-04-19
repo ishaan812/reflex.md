@@ -2,11 +2,13 @@ import { useState } from "react";
 
 import type { RepoInsight, JudgeIssue } from "../../../shared/judge";
 import { ScoreBadge } from "./ScoreBadge";
+import { TeamPanel } from "./TeamPanel";
 
 interface Props {
   repo: string | null;
   insight: RepoInsight | null;
   hasGemini: boolean;
+  hasGithub: boolean;
   onAnalyzed: (i: RepoInsight) => void;
 }
 
@@ -14,11 +16,15 @@ export function RepoInsightView({
   repo,
   insight,
   hasGemini,
+  hasGithub,
   onAnalyzed,
 }: Props): JSX.Element {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [writeStatus, setWriteStatus] = useState<string | null>(null);
+  const [prBusy, setPrBusy] = useState(false);
+  const [prStatus, setPrStatus] = useState<string | null>(null);
+  const [prUrl, setPrUrl] = useState<string | null>(null);
 
   if (!repo) {
     return (
@@ -49,6 +55,29 @@ export function RepoInsightView({
       setTimeout(() => setWriteStatus(null), 5000);
     } catch (e) {
       setWriteStatus(`failed: ${(e as Error).message}`);
+    }
+  };
+
+  const openPr = async (): Promise<void> => {
+    setPrBusy(true);
+    setPrStatus(null);
+    setPrUrl(null);
+    try {
+      const res = await window.reflex.githubOpenPr(repo);
+      setPrUrl(res.pr_url);
+      const verb =
+        res.action === "created"
+          ? "created"
+          : res.action === "replaced-reflex-block"
+            ? "refreshed"
+            : "updated";
+      setPrStatus(
+        `PR #${res.pr_number} — ${verb} ${res.target_file} on ${res.branch}`,
+      );
+    } catch (e) {
+      setPrStatus(`failed: ${(e as Error).message}`);
+    } finally {
+      setPrBusy(false);
     }
   };
 
@@ -105,6 +134,9 @@ export function RepoInsightView({
         )}
       </header>
 
+      {/* Always show team state — even pre-analysis. */}
+      <TeamPanel repo={repo} hasGithub={hasGithub} />
+
       {!insight ? (
         <div className="flex flex-1 items-center justify-center p-6 text-center text-slate-500">
           No cross-session insight yet.
@@ -149,23 +181,69 @@ export function RepoInsightView({
             </Section>
           )}
 
-          <Section title="AGENTS_CONTEXT.md (paste into your repo)">
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] text-slate-500">
-                {insight.context_md.length} chars — suggested filename{" "}
-                <code className="text-slate-300">AGENTS_CONTEXT.md</code> in{" "}
-                <code className="text-slate-300">{repo}</code>
-              </span>
-              <button
-                onClick={() => void writeToRepo()}
-                className="rounded border border-slate-700 px-2 py-0.5 text-xs text-slate-200 hover:bg-slate-800"
-              >
-                Write to repo
-              </button>
+          <Section title="Ship it">
+            <div className="rounded border border-slate-800 bg-slate-900/60 p-3">
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => void openPr()}
+                  disabled={prBusy}
+                  className="rounded bg-violet-700 px-3 py-1 text-xs font-medium text-white hover:bg-violet-600 disabled:opacity-50"
+                  title="Opens a PR against your repo's default branch that updates AGENTS.md / CLAUDE.md"
+                >
+                  {prBusy ? "opening PR…" : "Open PR on GitHub"}
+                </button>
+                <button
+                  onClick={() => void writeToRepo()}
+                  className="rounded border border-slate-700 px-2 py-1 text-xs text-slate-200 hover:bg-slate-800"
+                  title="Write AGENTS_CONTEXT.md locally (no GitHub)"
+                >
+                  Write locally
+                </button>
+                {prUrl && (
+                  <a
+                    href={prUrl}
+                    className="ml-auto text-xs text-emerald-300 hover:underline"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      // Open in system browser via the preload bridge if added; fallback to location
+                      window.open(prUrl, "_blank", "noopener");
+                    }}
+                  >
+                    open PR on GitHub ↗
+                  </a>
+                )}
+              </div>
+              <div className="mt-2 space-y-0.5 text-[11px]">
+                {prStatus && (
+                  <div className="text-slate-300">{prStatus}</div>
+                )}
+                {writeStatus && (
+                  <div className="text-slate-400">{writeStatus}</div>
+                )}
+                <div className="text-slate-500">
+                  PR target: first of{" "}
+                  <code className="text-slate-300">AGENTS.md</code> /{" "}
+                  <code className="text-slate-300">CLAUDE.md</code> /{" "}
+                  <code className="text-slate-300">
+                    .github/copilot-instructions.md
+                  </code>{" "}
+                  that exists, else creates{" "}
+                  <code className="text-slate-300">AGENTS.md</code>. The Reflex
+                  block is delimited by{" "}
+                  <code className="text-slate-300">
+                    &lt;!-- reflex:context:start --&gt;
+                  </code>{" "}
+                  so future runs refresh in place.
+                </div>
+              </div>
             </div>
-            {writeStatus && (
-              <div className="mt-2 text-[11px] text-slate-400">{writeStatus}</div>
-            )}
+          </Section>
+
+          <Section title="context_md preview">
+            <div className="text-[11px] text-slate-500">
+              {insight.context_md.length} chars — this is the body dropped into
+              the PR.
+            </div>
             <pre className="mt-2 max-h-[50vh] overflow-auto rounded bg-slate-950 p-3 text-xs text-slate-300 selectable">
               {insight.context_md}
             </pre>

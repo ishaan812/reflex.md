@@ -20,6 +20,12 @@ export function JudgePanel({
 }: Props): JSX.Element {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [prBusy, setPrBusy] = useState(false);
+  const [prStatus, setPrStatus] = useState<string | null>(null);
+  const [prUrl, setPrUrl] = useState<string | null>(null);
+  const [shareBusy, setShareBusy] = useState(false);
+  const [shareStatus, setShareStatus] = useState<string | null>(null);
+  const [shareUrl, setShareUrl] = useState<string | null>(null);
 
   const runJudge = async (): Promise<void> => {
     setBusy(true);
@@ -31,6 +37,44 @@ export function JudgePanel({
       setError((e as Error).message);
     } finally {
       setBusy(false);
+    }
+  };
+
+  const openPr = async (): Promise<void> => {
+    setPrBusy(true);
+    setPrStatus(null);
+    setPrUrl(null);
+    try {
+      const res = await window.reflex.githubOpenPrForSession(sessionId);
+      setPrUrl(res.pr_url);
+      const verb =
+        res.action === "created"
+          ? "created"
+          : res.action === "replaced-reflex-block"
+            ? "refreshed"
+            : "updated";
+      setPrStatus(
+        `PR #${res.pr_number} — ${verb} ${res.target_file} on ${res.branch}`,
+      );
+    } catch (e) {
+      setPrStatus(`failed: ${(e as Error).message}`);
+    } finally {
+      setPrBusy(false);
+    }
+  };
+
+  const shareToTeam = async (): Promise<void> => {
+    setShareBusy(true);
+    setShareStatus(null);
+    setShareUrl(null);
+    try {
+      const res = await window.reflex.teamShareJudgment(sessionId);
+      setShareStatus(`committed ${res.committed_path}`);
+      setShareUrl(res.html_url);
+    } catch (e) {
+      setShareStatus(`failed: ${(e as Error).message}`);
+    } finally {
+      setShareBusy(false);
     }
   };
 
@@ -137,8 +181,66 @@ export function JudgePanel({
           </ul>
         </div>
       )}
+
+      <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-slate-800 pt-2">
+        <button
+          onClick={() => void openPr()}
+          disabled={prBusy || !judgment.repo}
+          className="rounded bg-violet-700 px-3 py-1 text-xs font-medium text-white hover:bg-violet-600 disabled:opacity-50"
+          title={
+            judgment.repo
+              ? "Open a PR that adds this session's advice to the repo's AGENTS.md / CLAUDE.md"
+              : "No repo inferred for this session — can't open a PR"
+          }
+        >
+          {prBusy ? "opening PR…" : "Open PR for this session"}
+        </button>
+        <button
+          onClick={() => void shareToTeam()}
+          disabled={shareBusy || !judgment.repo}
+          className="rounded border border-cyan-700 bg-cyan-950/40 px-3 py-1 text-xs text-cyan-200 hover:bg-cyan-900/50 disabled:opacity-50"
+          title={
+            judgment.repo
+              ? "Commit this judgment summary to .reflex/sessions/ in the repo so teammates can see it"
+              : "No repo inferred"
+          }
+        >
+          {shareBusy ? "sharing…" : "Share to team"}
+        </button>
+        {judgment.repo && (
+          <span
+            className="truncate text-[11px] text-slate-500"
+            title={judgment.repo}
+          >
+            → {basename(judgment.repo)}
+          </span>
+        )}
+        {(prUrl || shareUrl) && (
+          <a
+            href={prUrl ?? shareUrl ?? "#"}
+            onClick={(e) => {
+              e.preventDefault();
+              window.open(prUrl ?? shareUrl ?? "", "_blank", "noopener");
+            }}
+            className="ml-auto text-xs text-emerald-300 hover:underline"
+          >
+            {prUrl ? "open PR on GitHub ↗" : "open commit on GitHub ↗"}
+          </a>
+        )}
+      </div>
+      {prStatus && (
+        <div className="mt-1 text-[11px] text-slate-400">{prStatus}</div>
+      )}
+      {shareStatus && (
+        <div className="mt-1 text-[11px] text-slate-400">{shareStatus}</div>
+      )}
     </section>
   );
+}
+
+function basename(p: string): string {
+  const parts = p.split("/").filter(Boolean);
+  return parts[parts.length - 1] ?? p;
 }
 
 function Block({

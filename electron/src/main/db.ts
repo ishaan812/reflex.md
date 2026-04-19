@@ -129,6 +129,22 @@ CREATE TABLE IF NOT EXISTS repo_insights (
 );
 CREATE INDEX IF NOT EXISTS idx_repo_insights_evaluated
   ON repo_insights(evaluated_at DESC);
+
+-- Per-session playground chat messages (user ↔ AI back-and-forth about the
+-- session transcript). Kept separate from session_entries; we never mix
+-- captured AI-session content with user/Reflex exploration of it.
+CREATE TABLE IF NOT EXISTS playground_messages (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  session_id   TEXT NOT NULL,
+  role         TEXT NOT NULL,     -- "user" | "assistant"
+  content      TEXT NOT NULL,
+  ts           TEXT NOT NULL,
+  tokens_in    INTEGER,
+  tokens_out   INTEGER,
+  model        TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_playground_session_ts
+  ON playground_messages(session_id, ts);
 `;
 
 /** Result of applying an event to the DB.
@@ -617,6 +633,76 @@ export function judgmentNeedsRefresh(sessionId: string): boolean {
     | undefined;
   if (!row) return true;
   return row.cached !== row.cur;
+}
+
+// --- Playground --------------------------------------------------------
+
+export interface PlaygroundRow {
+  id: number;
+  session_id: string;
+  role: "user" | "assistant";
+  content: string;
+  ts: string;
+  tokens_in: number | null;
+  tokens_out: number | null;
+  model: string | null;
+}
+
+export function listPlaygroundMessages(sessionId: string): PlaygroundRow[] {
+  const d = open();
+  return d
+    .prepare(
+      `SELECT id, session_id, role, content, ts, tokens_in, tokens_out, model
+         FROM playground_messages
+        WHERE session_id = ?
+        ORDER BY id ASC`,
+    )
+    .all(sessionId) as PlaygroundRow[];
+}
+
+export function appendPlaygroundMessage(args: {
+  session_id: string;
+  role: "user" | "assistant";
+  content: string;
+  tokens_in?: number;
+  tokens_out?: number;
+  model?: string;
+}): PlaygroundRow {
+  const d = open();
+  const ts = new Date().toISOString();
+  const info = d
+    .prepare(
+      `INSERT INTO playground_messages
+        (session_id, role, content, ts, tokens_in, tokens_out, model)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    )
+    .run(
+      args.session_id,
+      args.role,
+      args.content,
+      ts,
+      args.tokens_in ?? null,
+      args.tokens_out ?? null,
+      args.model ?? null,
+    );
+  return {
+    id: Number(info.lastInsertRowid),
+    session_id: args.session_id,
+    role: args.role,
+    content: args.content,
+    ts,
+    tokens_in: args.tokens_in ?? null,
+    tokens_out: args.tokens_out ?? null,
+    model: args.model ?? null,
+  };
+}
+
+export function clearPlayground(sessionId: string): number {
+  const d = open();
+  const info = d
+    .prepare(`DELETE FROM playground_messages WHERE session_id = ?`)
+    .run(sessionId);
+  return info.changes as number;
 }
 
 /** Count of entries for a session (used to stamp judgments as fresh). */

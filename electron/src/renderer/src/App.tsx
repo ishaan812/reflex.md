@@ -19,6 +19,7 @@ import { RepoInsightView } from "./components/RepoInsightView";
 import { RepoList } from "./components/RepoList";
 import { SessionList } from "./components/SessionList";
 import { SessionView } from "./components/SessionView";
+import { SettingsModal } from "./components/SettingsModal";
 import { StatusBar } from "./components/StatusBar";
 
 type Tab = "sessions" | "repos" | "flows";
@@ -46,6 +47,15 @@ export function App(): JSX.Element {
   );
   const [judgmentStale, setJudgmentStale] = useState(false);
   const [hasGemini, setHasGemini] = useState(false);
+  const [hasGithub, setHasGithub] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+
+  const refreshConfigStatus = useCallback(() => {
+    void window.reflex.configStatus().then((c) => {
+      setHasGemini(c.has_gemini);
+      setHasGithub(c.has_github);
+    });
+  }, []);
 
   // Repos state
   const [repos, setRepos] = useState<RepoSummary[]>([]);
@@ -67,9 +77,18 @@ export function App(): JSX.Element {
       setRatings(m);
     });
     void window.reflex.getStatus().then(setStatus);
-    void window.reflex.configStatus().then((c) => setHasGemini(c.has_gemini));
+    refreshConfigStatus();
     void window.reflex.listRepos().then(setRepos);
-  }, []);
+  }, [refreshConfigStatus]);
+
+  // First-run: if the user has zero keys configured, pop the settings modal.
+  useEffect(() => {
+    // Small delay so it doesn't pop before the UI has painted.
+    const t = setTimeout(() => {
+      if (!hasGemini && !hasGithub) setSettingsOpen(true);
+    }, 400);
+    return () => clearTimeout(t);
+  }, [hasGemini, hasGithub]);
 
   // Live repo insight updates (triggered after an analyze-repo completes).
   useEffect(() => {
@@ -222,15 +241,65 @@ export function App(): JSX.Element {
           >
             Export mistakes.md
           </button>
+          <button
+            onClick={() => setSettingsOpen(true)}
+            className="flex items-center gap-1 rounded border border-slate-700 px-2 py-0.5 text-xs hover:bg-slate-800"
+            title="Settings"
+          >
+            <span
+              className={`inline-block h-1.5 w-1.5 rounded-full ${
+                hasGemini && hasGithub
+                  ? "bg-emerald-500"
+                  : hasGemini || hasGithub
+                    ? "bg-amber-500"
+                    : "bg-rose-500"
+              }`}
+            />
+            Settings
+          </button>
         </div>
       </header>
     ),
-    [tab, sessions.length, flows.length, exportStatus, onExport],
+    [
+      tab,
+      sessions.length,
+      flows.length,
+      repos.length,
+      exportStatus,
+      onExport,
+      hasGemini,
+      hasGithub,
+    ],
   );
+
+  const setupBanner =
+    !hasGemini || !hasGithub ? (
+      <div className="shrink-0 border-b border-amber-700/30 bg-amber-900/20 px-4 py-1.5 text-xs text-amber-200">
+        <span>
+          {!hasGemini && !hasGithub
+            ? "Finish setup: add your Gemini key and GitHub token to judge sessions and open PRs."
+            : !hasGemini
+              ? "Add your Gemini key to enable AI judging."
+              : "Add your GitHub token to open PRs from Reflex."}
+        </span>
+        <button
+          onClick={() => setSettingsOpen(true)}
+          className="ml-3 rounded bg-amber-700/40 px-2 py-0.5 text-amber-100 hover:bg-amber-700/70"
+        >
+          Open settings
+        </button>
+      </div>
+    ) : null;
 
   return (
     <div className="flex h-full flex-col font-mono text-sm">
       {header}
+      {setupBanner}
+      <SettingsModal
+        open={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        onChanged={refreshConfigStatus}
+      />
       <div className="flex min-h-0 flex-1">
         <aside className="w-[420px] shrink-0 overflow-y-auto border-r border-slate-800">
           {tab === "sessions" ? (
@@ -272,6 +341,7 @@ export function App(): JSX.Element {
               repo={selectedRepo}
               insight={selectedInsight}
               hasGemini={hasGemini}
+              hasGithub={hasGithub}
               onAnalyzed={(i) => setSelectedInsight(i)}
             />
           ) : (

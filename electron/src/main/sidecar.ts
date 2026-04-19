@@ -75,11 +75,13 @@ export class Sidecar extends EventEmitter {
       REFLEX_LOG: process.env.REFLEX_LOG ?? "info",
     };
 
-    // Enable all session sources by default; the network proxy + transparent
-    // listener are OFF until the user explicitly installs the hooks, so we
-    // pass port 0 for them which the sidecar treats as "don't bind".
+    // The proxy binds on a fixed port so macOS system proxy
+    // (networksetup -setsecurewebproxy 127.0.0.1 8888) can target it
+    // reliably. If the port is taken we'll log and the user can change
+    // the installer args. Transparent port stays off until the user opts
+    // into pf redirects.
     const args = [
-      "--proxy-port", "0",
+      "--proxy-port", "8888",
       "--ws-port", "0",
       "--transparent-port", "0",
       "--sources", "opencode,claude-code,codex",

@@ -1,0 +1,37 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "86fefde80dfc",
+  "session_id": "ses_25b19aadeffeoNmZpqe12rbv6s",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-19T10:01:04.558948Z",
+  "branch": "master",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "web/backend/src/adapters/index.ts",
+    "web/backend/src/adapters/openCode.ts",
+    "web/backend/src/friction.ts",
+    "web/backend/src/ingest.ts",
+    "web/backend/src/llm.ts",
+    "web/backend/src/parser.ts",
+    "web/backend/test/friction.test.ts",
+    "web/backend/test/parser.test.ts"
+  ],
+  "agent": "OpenCode",
+  "turn_id": "b7d23c2010ef",
+  "token_usage": {
+    "input_tokens": 11,
+    "cache_creation_tokens": 30650,
+    "cache_read_tokens": 128894,
+    "output_tokens": 1207,
+    "api_call_count": 6
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-19T10:01:04.549615Z",
+    "agent_lines": 0,
+    "human_added": 20315,
+    "human_modified": 80,
+    "human_removed": 0,
+    "total_committed": 20315,
+    "agent_percentage": 0
+  }
+}

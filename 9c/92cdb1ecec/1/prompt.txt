@@ -1,0 +1,17 @@
+i think issue is why are we thinking it will go to this API only it should be able to intercept it at a OS level and then capture AI calls to these outgoing apps and thats the core thing to build
+
+---
+
+are we stuck on something whats happening?
+
+---
+
+and the source needs to be network calls for sure - like thats the biggest unlock that we are missing right now - we are building logging + feedback + work better with agents system - so we need to capture that very well and get it working - sidecar being active helps us with things - then we need to normalize it across AI session and rate them thats the goal - see whats left on that end
+
+---
+
+yes kick off a pnpm dev rn
+
+---
+
+clicking on the session that page is not working - can we do something for this? i have gemini - Gemini Key: REDACTED lets use this to rate the sessions and then we need to build an automatic session judge that basically rates the sessions - understands the problems - points out repetative issues that the user is doing / agent is doing and then help user become better at doing tasks in that particular repo - we will do a call to  gemini to rate the sessions and make the user work better with these agents that they keep using thats the goal

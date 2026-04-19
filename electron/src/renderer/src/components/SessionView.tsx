@@ -6,25 +6,28 @@ import type { SessionJudgment } from "../../../shared/judge";
 import { RatingPanel } from "./RatingPanel";
 import { JudgePanel } from "./JudgePanel";
 import { PlaygroundPanel } from "./PlaygroundPanel";
+import { ContextTimelinePanel } from "./ContextTimelinePanel";
 
 interface Props {
   session: SessionDetail | null;
   rating: SessionRating | null;
   judgment: SessionJudgment | null;
   hasGemini: boolean;
+  hasGithub: boolean;
   judgmentStale: boolean;
   onJudgmentComputed: (v: SessionJudgment) => void;
 }
 
 const EMPTY: SessionEntry[] = [];
 
-type SessionTab = "transcript" | "playground";
+type SessionTab = "transcript" | "playground" | "context";
 
 export function SessionView({
   session,
   rating,
   judgment,
   hasGemini,
+  hasGithub,
   judgmentStale,
   onJudgmentComputed,
 }: Props): JSX.Element {
@@ -118,6 +121,12 @@ export function SessionView({
         >
           Playground
         </TabBtn>
+        <TabBtn
+          active={activeTab === "context"}
+          onClick={() => setActiveTab("context")}
+        >
+          Context
+        </TabBtn>
       </nav>
 
       {/* Tab content: exactly one panel is visible at a time via `hidden`
@@ -171,6 +180,23 @@ export function SessionView({
             sessionId={session.session_id}
             hasGemini={hasGemini}
             repo={judgment?.repo ?? null}
+          />
+        </div>
+      </div>
+
+      {/* Context tab: AGENTS.md timeline */}
+      <div
+        role="tabpanel"
+        aria-hidden={activeTab !== "context"}
+        className={`${
+          activeTab === "context" ? "flex" : "hidden"
+        } min-h-0 flex-1 flex-col`}
+      >
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <ContextTimelinePanel
+            repo={judgment?.repo ?? null}
+            sessionLastTs={session.last_ts}
+            hasGithub={hasGithub}
           />
         </div>
       </div>

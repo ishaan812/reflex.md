@@ -330,6 +330,7 @@ export function App(): JSX.Element {
               rating={selectedRating}
               judgment={selectedJudgment}
               hasGemini={hasGemini}
+              hasGithub={hasGithub}
               judgmentStale={judgmentStale}
               onJudgmentComputed={(v) => {
                 setSelectedJudgment(v);

@@ -33,6 +33,32 @@ repoRoutes.get("/repos", async (req: any, res, next) => {
   }
 });
 
+repoRoutes.get("/sessions/:id", async (req: any, res, next) => {
+  try {
+    const session = await prisma.session.findFirst({
+      where: { id: req.params.id, repo: { userId: req.user.id } },
+      include: { repo: { select: { owner: true, name: true } } },
+    });
+    if (!session) return res.status(404).json({ error: "session not found" });
+    res.json({
+      id: session.id,
+      checkpointId: session.checkpointId,
+      idx: session.idx,
+      strategy: session.strategy,
+      branch: session.branch,
+      startedAt: session.startedAt,
+      endedAt: session.endedAt,
+      filesTouched: session.filesTouched,
+      tokenUsage: session.tokenUsage,
+      frictionScore: session.frictionScore,
+      events: session.events,
+      repo: session.repo,
+    });
+  } catch (e) {
+    next(e);
+  }
+});
+
 repoRoutes.post("/repos/:owner/:name/ingest", async (req: any, res, next) => {
   try {
     const result = await ingestRepo(req.user, req.params.owner, req.params.name);

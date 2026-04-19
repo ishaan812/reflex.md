@@ -38,6 +38,11 @@ export interface SessionSummary {
   frictionScore: number;
 }
 
+export interface SessionDetail extends SessionSummary {
+  events: Array<Record<string, any>>;
+  repo: { owner: string; name: string };
+}
+
 export interface ClusterOut {
   key: string;
   count: number;
@@ -64,6 +69,8 @@ export const api = {
   me: () => fetch("/api/me", init).then(j<{ login: string }>),
   logout: () => fetch("/auth/logout", { ...init, method: "POST" }).then(j),
   repos: () => fetch("/api/repos", init).then(j<RepoSummary[]>),
+  session: (id: string) =>
+    fetch(`/api/sessions/${id}`, init).then(j<SessionDetail>),
   ingest: (owner: string, name: string) =>
     fetch(`/api/repos/${owner}/${name}/ingest`, { ...init, method: "POST" }).then(
       j<{ repo: { id: string; owner: string; name: string }; sessions: SessionSummary[] }>,

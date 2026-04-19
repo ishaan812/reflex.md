@@ -9,6 +9,7 @@ import { SessionRow } from "@/components/dashboard/SessionRow";
 import { FrictionReport } from "@/components/dashboard/FrictionReport";
 import { DiffView } from "@/components/dashboard/DiffView";
 import { OpenPrDialog } from "@/components/dashboard/OpenPrDialog";
+import { EventDrawer } from "@/components/dashboard/EventDrawer";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -22,6 +23,7 @@ export function Repo() {
 
   const [sessions, setSessions] = useState<SessionSummary[] | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const [analysis, setAnalysis] = useState<AnalysisOut | null>(null);
   const [ingestError, setIngestError] = useState<string | null>(null);
   const [analyzeError, setAnalyzeError] = useState<string | null>(null);
@@ -135,7 +137,10 @@ export function Repo() {
                     key={s.id}
                     session={s}
                     selected={selected === s.id}
-                    onClick={() => setSelected(s.id)}
+                    onClick={() => {
+                      setSelected(s.id);
+                      setDrawerOpen(true);
+                    }}
                   />
                 ))}
               </div>
@@ -215,6 +220,12 @@ export function Repo() {
           </section>
         </div>
       </main>
+
+      <EventDrawer
+        sessionId={selected}
+        open={drawerOpen}
+        onOpenChange={setDrawerOpen}
+      />
     </>
   );
 }

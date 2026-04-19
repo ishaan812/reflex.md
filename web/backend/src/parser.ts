@@ -112,7 +112,7 @@ function parseOneSession(idx: number, dir: string): ParsedSession {
 
   const jsonlPath = join(dir, "full.jsonl");
   const events: unknown[] = existsSync(jsonlPath)
-    ? parseJsonl(readFileSync(jsonlPath, "utf8"))
+    ? parseTranscript(readFileSync(jsonlPath, "utf8"))
     : [];
 
   const promptPath = join(dir, "prompt.txt");
@@ -143,9 +143,39 @@ function parseOneSession(idx: number, dir: string): ParsedSession {
   };
 }
 
-function parseJsonl(raw: string): unknown[] {
+/**
+ * Parse a transcript file that may be either:
+ * 1. True JSONL (one JSON object per line) — Claude Code format
+ * 2. A single JSON object with `{ info, messages }` — OpenCode format
+ *
+ * Detects the format automatically and returns the event array.
+ */
+function parseTranscript(raw: string): unknown[] {
+  const trimmed = raw.trim();
+  if (!trimmed) return [];
+
+  // Try parsing as a single JSON object first (OpenCode writes pretty-printed JSON
+  // to full.jsonl which is NOT valid JSONL — each line fails individually).
+  try {
+    const obj = JSON.parse(trimmed);
+    if (obj && typeof obj === "object" && !Array.isArray(obj)) {
+      // OpenCode format: { info, messages: [...] }
+      if (Array.isArray(obj.messages)) {
+        return obj.messages;
+      }
+      // Single JSON object but no messages key — wrap it as a single event
+      return [obj];
+    }
+    if (Array.isArray(obj)) return obj;
+    // Primitive — wrap
+    return [obj];
+  } catch {
+    // Not valid as a single JSON blob — fall through to JSONL parsing
+  }
+
+  // JSONL: one JSON object per line
   const out: unknown[] = [];
-  for (const line of raw.split("\n")) {
+  for (const line of trimmed.split("\n")) {
     if (!line.trim()) continue;
     try {
       out.push(JSON.parse(line));

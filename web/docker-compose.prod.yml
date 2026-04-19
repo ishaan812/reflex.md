@@ -1,43 +1,98 @@
-# Production overrides — use with:
-#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+# Production compose file — self-contained for Dokploy
 #
-# Adds: log limits, resource constraints, SSL-ready port mapping
+# Dokploy runs: docker compose -p <name> -f ./web/docker-compose.prod.yml up -d --build
+# So this file must define everything (no reliance on docker-compose.yml merge).
+#
+# Routing: frontend nginx already proxies /api/* and /auth/* to backend:3001,
+# so only ONE public domain is needed: reflex.ishaan812.com → frontend service.
 
 services:
   postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: reflex
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-reflex}
+      POSTGRES_DB: reflex
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U reflex -d reflex"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
     logging:
       driver: json-file
       options:
         max-size: "10m"
         max-file: "3"
-    deploy:
-      resources:
-        limits:
-          memory: 512M
+    networks:
+      - dokploy-network
 
   backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
     environment:
+      DATABASE_URL: postgresql://reflex:${POSTGRES_PASSWORD:-reflex}@postgres:5432/reflex
+      PORT: "3001"
       NODE_ENV: production
+      JWT_SECRET: ${JWT_SECRET}
+      GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID}
+      GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET}
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-2.0-flash}
+      FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:-https://reflex.ishaan812.com}
+      BACKEND_ORIGIN: ${BACKEND_ORIGIN:-https://reflex.ishaan812.com}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - clone-cache:/tmp/reflex-clones
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://localhost:3001/api/health').then(r=>{if(!r.ok)throw 1}).catch(()=>process.exit(1))\""]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
     logging:
       driver: json-file
       options:
         max-size: "10m"
         max-file: "5"
-    deploy:
-      resources:
-        limits:
-          memory: 1G
+    networks:
+      - dokploy-network
 
   frontend:
-    # In production, expose only on port 80 (put behind a reverse proxy / LB for HTTPS)
-    ports:
-      - "80:80"
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    depends_on:
+      backend:
+        condition: service_healthy
+    expose:
+      - "80"
+    restart: unless-stopped
     logging:
       driver: json-file
       options:
         max-size: "5m"
         max-file: "3"
-    deploy:
-      resources:
-        limits:
-          memory: 128M
+    networks:
+      - dokploy-network
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=dokploy-network
+      - traefik.http.routers.reflex-web.rule=Host(`reflex.ishaan812.com`)
+      - traefik.http.routers.reflex-web.entrypoints=websecure
+      - traefik.http.routers.reflex-web.tls.certresolver=letsencrypt
+      - traefik.http.services.reflex-web.loadbalancer.server.port=80
+
+volumes:
+  pgdata: {}
+  clone-cache: {}
+
+networks:
+  dokploy-network:
+    external: true

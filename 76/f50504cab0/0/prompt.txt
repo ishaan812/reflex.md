@@ -1,0 +1,61 @@
+whats left to make this complete aslo https://growthx.club/docs/opencode-buildathon-by-growthx-builder-handbook we need to make it fit to the revenue tab
+
+---
+
+we need to build the PR system that updates the agent.md file and opens it on github so that it doesnt make the same mistakes so its like the sessions gets judged and then user can check it through electron and then after that it can automatically update everything using electron
+
+---
+
+REDACTED - this is the github token
+
+---
+
+rn the PR thing is showing up on the repo level itself - but through the session also it should be able to do the PR through that too
+
+---
+
+and we need to somehow make it for a team such that we have version control enabled for each other that gets handled through the repo only and we are able to also see what others are going htrough and fix their problems itself - so the app can see that too
+
+---
+
+https://growthx.club/docs/opencode-buildathon-by-growthx-builder-handbook see what we need to build next for the revenue track optimization (ignore signups that is being handled by a teammate)
+
+---
+
+[Image 1] fix this issue - the PAT is REDACTED
+
+---
+
+it needs to take it from the settings and not the storage that we are using - so handle that well
+
+---
+
+now i have chatgpt app downloaded - i just want to track those chats somehow too in the flwos section so we can analyse those too
+
+---
+
+can we somehow build each session thing as a playground - since now we also have the share with teams feature ?
+
+---
+
+yes finish them asap
+
+---
+
+make the playground as a tab in the session itself so its easy for users to navigate it - and each update to the agents.md file is tracked somehow so it shows version control and team things also gets added to the playground - also each session can be a different repo and for htose will require different PAT so need to handle that somehow too
+
+---
+
+[Image 1] can we move the tabs above - rightnow they are not clickable at all
+
+---
+
+sometimes clicking on teh playground it is still not showing up [Image 1] - bug to fix
+
+---
+
+it should be like a tabbed view and on switch it replaces whats open - not like a scroll thing thats there rn
+
+---
+
+[Image 1] fix the alignment issue here thats it

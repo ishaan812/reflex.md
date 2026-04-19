@@ -1,12 +1,13 @@
 services:
+  # ── PostgreSQL ────────────────────────────────────────────────────
   postgres:
     image: postgres:16
     container_name: reflex-postgres
     ports:
-      - "5433:5432"
+      - "${POSTGRES_PORT:-5433}:5432"
     environment:
       POSTGRES_USER: reflex
-      POSTGRES_PASSWORD: reflex
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-reflex}
       POSTGRES_DB: reflex
     volumes:
       - pgdata:/var/lib/postgresql/data
@@ -15,6 +16,50 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+    restart: unless-stopped
+
+  # ── Backend (Express API) ─────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: reflex-backend
+    ports:
+      - "${PORT:-3001}:3001"
+    env_file:
+      - .env
+    environment:
+      # Override DATABASE_URL to use Docker internal hostname
+      DATABASE_URL: postgresql://reflex:${POSTGRES_PASSWORD:-reflex}@postgres:5432/reflex
+      PORT: "3001"
+      NODE_ENV: production
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      # Persist git clone cache across restarts
+      - clone-cache:/tmp/reflex-clones
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://localhost:3001/api/health').then(r=>{if(!r.ok)throw 1}).catch(()=>process.exit(1))\""]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+
+  # ── Frontend (Nginx + Vite SPA) ──────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: reflex-frontend
+    ports:
+      - "${FRONTEND_PORT:-3000}:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
 
 volumes:
   pgdata: {}
+  clone-cache: {}

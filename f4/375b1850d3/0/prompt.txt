@@ -1,0 +1,9 @@
+update the DMG that is getting downloaded from the web app thats deployed to the latest version that we just pushed
+
+---
+
+what all is left to do now - leave the dmg - lets focus on the agents.md version timeline on another tab and then get it sorted
+
+---
+
+Tell us what it does in Short writeup

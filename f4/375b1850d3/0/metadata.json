@@ -1,0 +1,93 @@
+{
+  "cli_version": "0.5.5",
+  "checkpoint_id": "f4375b1850d3",
+  "session_id": "ses_25ba963bdffeUnzAsqx26HNZ5d",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-19T10:43:05.642136Z",
+  "branch": "master",
+  "checkpoints_count": 2,
+  "files_touched": [
+    "electron/src/renderer/src/App.tsx",
+    "electron/src/renderer/src/components/ContextTimelinePanel.tsx",
+    "electron/src/renderer/src/components/SessionView.tsx"
+  ],
+  "agent": "OpenCode",
+  "model": "claude-opus-4-7",
+  "turn_id": "78f9abe0f75f",
+  "checkpoint_transcript_start": 619,
+  "transcript_lines_at_start": 619,
+  "token_usage": {
+    "input_tokens": 41,
+    "cache_creation_tokens": 33929,
+    "cache_read_tokens": 18912183,
+    "output_tokens": 25993,
+    "api_call_count": 27
+  },
+  "session_metrics": {
+    "turn_count": 18
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-19T10:43:05.540406Z",
+    "agent_lines": 448,
+    "agent_removed": 1,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 448,
+    "total_lines_changed": 449,
+    "agent_percentage": 100,
+    "metric_version": 2
+  },
+  "prompt_attributions": [
+    {
+      "checkpoint_number": 1,
+      "user_lines_added": 4813,
+      "user_lines_removed": 0,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0,
+      "user_added_per_file": {
+        "electron/node_modules/minipass-sized/.gitignore": 22,
+        "electron/node_modules/minipass-sized/LICENSE": 15,
+        "electron/node_modules/minipass-sized/README.md": 28,
+        "electron/node_modules/minipass-sized/index.js": 67,
+        "electron/node_modules/minipass-sized/package-lock.json": 3464,
+        "electron/node_modules/minipass-sized/package.json": 39,
+        "electron/node_modules/minipass-sized/test/basic.js": 83,
+        "electron/node_modules/tailwindcss/stubs/.gitignore": 1,
+        "electron/node_modules/tailwindcss/stubs/.prettierrc.json": 6,
+        "electron/node_modules/tailwindcss/stubs/config.full.js": 1062,
+        "electron/node_modules/tailwindcss/stubs/config.simple.js": 7,
+        "electron/node_modules/tailwindcss/stubs/postcss.config.cjs": 6,
+        "electron/node_modules/tailwindcss/stubs/postcss.config.js": 6,
+        "electron/node_modules/tailwindcss/stubs/tailwind.config.cjs": 2,
+        "electron/node_modules/tailwindcss/stubs/tailwind.config.js": 2,
+        "electron/node_modules/tailwindcss/stubs/tailwind.config.ts": 3
+      }
+    },
+    {
+      "checkpoint_number": 2,
+      "user_lines_added": 4813,
+      "user_lines_removed": 0,
+      "agent_lines_added": 448,
+      "agent_lines_removed": 1,
+      "user_added_per_file": {
+        "electron/node_modules/minipass-sized/.gitignore": 22,
+        "electron/node_modules/minipass-sized/LICENSE": 15,
+        "electron/node_modules/minipass-sized/README.md": 28,
+        "electron/node_modules/minipass-sized/index.js": 67,
+        "electron/node_modules/minipass-sized/package-lock.json": 3464,
+        "electron/node_modules/minipass-sized/package.json": 39,
+        "electron/node_modules/minipass-sized/test/basic.js": 83,
+        "electron/node_modules/tailwindcss/stubs/.gitignore": 1,
+        "electron/node_modules/tailwindcss/stubs/.prettierrc.json": 6,
+        "electron/node_modules/tailwindcss/stubs/config.full.js": 1062,
+        "electron/node_modules/tailwindcss/stubs/config.simple.js": 7,
+        "electron/node_modules/tailwindcss/stubs/postcss.config.cjs": 6,
+        "electron/node_modules/tailwindcss/stubs/postcss.config.js": 6,
+        "electron/node_modules/tailwindcss/stubs/tailwind.config.cjs": 2,
+        "electron/node_modules/tailwindcss/stubs/tailwind.config.js": 2,
+        "electron/node_modules/tailwindcss/stubs/tailwind.config.ts": 3
+      }
+    }
+  ]
+}

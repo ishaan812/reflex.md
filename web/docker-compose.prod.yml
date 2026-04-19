@@ -81,13 +81,6 @@ services:
         max-file: "3"
     networks:
       - dokploy-network
-    labels:
-      - traefik.enable=true
-      - traefik.docker.network=dokploy-network
-      - traefik.http.routers.reflex-web.rule=Host(`reflex.ishaan812.com`)
-      - traefik.http.routers.reflex-web.entrypoints=websecure
-      - traefik.http.routers.reflex-web.tls.certresolver=letsencrypt
-      - traefik.http.services.reflex-web.loadbalancer.server.port=80
 
 volumes:
   pgdata: {}

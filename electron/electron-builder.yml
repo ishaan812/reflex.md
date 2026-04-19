@@ -1,0 +1,39 @@
+appId: ai.reflex.desktop
+productName: Reflex
+copyright: Copyright © 2026 Reflex
+
+directories:
+  buildResources: build
+  output: dist
+
+files:
+  - "out/**/*"
+  - "package.json"
+
+extraResources:
+  - from: "resources/capture"
+    to: "capture"
+  - from: "../scripts/install-hooks.sh"
+    to: "install-hooks.sh"
+
+asar: true
+asarUnpack:
+  # better-sqlite3 native addon needs to live on disk, not inside asar
+  - "node_modules/better-sqlite3/**/*"
+
+mac:
+  category: public.app-category.developer-tools
+  target:
+    - target: dmg
+      arch:
+        - arm64
+    - target: zip
+      arch:
+        - arm64
+  hardenedRuntime: true
+  gatekeeperAssess: false
+  entitlements: build/entitlements.mac.plist
+  entitlementsInherit: build/entitlements.mac.plist
+
+dmg:
+  sign: false

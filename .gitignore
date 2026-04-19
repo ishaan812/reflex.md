@@ -1,0 +1,45 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Node / Electron
+node_modules/
+dist/
+out/
+*.log
+.env
+.env.local
+.env.*.local
+
+# Rust
+rust/target/
+**/*.rs.bk
+Cargo.lock.bak
+
+# Sidecar artifacts copied into Electron resources
+electron/resources/capture
+electron/resources/capture.exe
+
+# Generated CA / runtime data
+.reflex/
+*.pem
+*.crt
+*.key
+!**/fixtures/*.pem
+
+# Build caches
+.turbo/
+.parcel-cache/
+*.tsbuildinfo
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*

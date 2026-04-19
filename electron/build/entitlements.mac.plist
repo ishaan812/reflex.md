@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+  <dict>
+    <!-- Allow spawning the unsigned Rust sidecar in dev builds; required to
+         load Node native modules (better-sqlite3) with hardened runtime. -->
+    <key>com.apple.security.cs.allow-jit</key>
+    <true/>
+    <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
+    <true/>
+    <key>com.apple.security.cs.disable-library-validation</key>
+    <true/>
+
+    <!-- Outbound network access for the proxy. -->
+    <key>com.apple.security.network.client</key>
+    <true/>
+    <!-- Inbound loopback for the local WebSocket + MITM proxy. -->
+    <key>com.apple.security.network.server</key>
+    <true/>
+  </dict>
+</plist>

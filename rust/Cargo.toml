@@ -1,0 +1,67 @@
+[package]
+name = "reflex-capture"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.85"
+description = "Reflex MITM capture sidecar — intercepts AI API traffic and streams events to the Electron shell over WebSocket"
+
+[[bin]]
+name = "reflex-capture"
+path = "src/main.rs"
+
+[dependencies]
+# MITM engine (rcgen-ca + rustls-client are default features)
+hudsucker = { version = "0.24", features = ["decoder", "http2"] }
+
+# Certificate authority
+rcgen = { version = "0.14", features = ["pem"] }
+time = "0.3"
+
+# Async runtime and primitives
+tokio = { version = "1", features = ["full"] }
+tokio-tungstenite = "0.28"
+futures-util = "0.3"
+
+# TLS provider used by hudsucker is re-exported; we just use the aws_lc_rs
+# default provider that matches hudsucker's own examples.
+
+# HTTP utilities
+http = "1"
+http-body-util = "0.1"
+bytes = "1"
+
+# Serialization / IDs / time
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+uuid = { version = "1", features = ["v4", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+base64 = "0.22"
+
+# CLI and logging
+clap = { version = "4", features = ["derive", "env"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# Errors + filesystem
+anyhow = "1"
+thiserror = "2"
+dirs = "5"
+
+# Hashing (CA fingerprint)
+sha2 = "0.10"
+
+# SNI parser for transparent-mode proxy
+tls-parser = "0.12"
+
+# SQLite — used read-only to tail on-disk AI-tool session stores
+# (opencode writes its entire conversation to a SQLite DB; Codex does too).
+rusqlite = { version = "0.32", features = ["bundled"] }
+
+# File-system watching for JSONL-style session stores (Claude Code).
+notify = "7"
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = "symbols"
+opt-level = 3

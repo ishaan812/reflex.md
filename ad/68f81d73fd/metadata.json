@@ -30,6 +30,13 @@
       "context": "",
       "content_hash": "/ad/68f81d73fd/2/content_hash.txt",
       "prompt": ""
+    },
+    {
+      "metadata": "/ad/68f81d73fd/3/metadata.json",
+      "transcript": "/ad/68f81d73fd/3/full.jsonl",
+      "context": "/ad/68f81d73fd/3/context.md",
+      "content_hash": "/ad/68f81d73fd/3/content_hash.txt",
+      "prompt": "/ad/68f81d73fd/3/prompt.txt"
     }
   ],
   "token_usage": {

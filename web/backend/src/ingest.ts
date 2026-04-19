@@ -31,7 +31,7 @@ export async function ingestRepo(
 
     for (const cp of checkpoints) {
       for (const s of cp.sessions) {
-        const fq = scoreSession(s.events);
+        const fq = scoreSession(s.agent, s.events, s.prompt);
         await prisma.session.upsert({
           where: {
             repoId_checkpointId_idx: {
@@ -45,11 +45,20 @@ export async function ingestRepo(
             frictionScore: fq,
             filesTouched: s.filesTouched,
             tokenUsage: s.tokenUsage as any,
+            agent: s.agent,
+            sessionId: s.sessionId,
+            turnId: s.turnId,
+            prompt: s.prompt,
+            context: s.context,
+            attribution: (s.attribution ?? null) as any,
           },
           create: {
             repoId: repo.id,
             checkpointId: cp.checkpointId,
             idx: s.index,
+            agent: s.agent,
+            sessionId: s.sessionId,
+            turnId: s.turnId,
             strategy: s.strategy,
             branch: s.branch,
             startedAt: new Date(s.startedAt),
@@ -57,6 +66,9 @@ export async function ingestRepo(
             filesTouched: s.filesTouched,
             tokenUsage: s.tokenUsage as any,
             events: s.events as any,
+            prompt: s.prompt,
+            context: s.context,
+            attribution: (s.attribution ?? null) as any,
             frictionScore: fq,
           },
         });
@@ -70,6 +82,9 @@ export async function ingestRepo(
         id: true,
         checkpointId: true,
         idx: true,
+        agent: true,
+        sessionId: true,
+        turnId: true,
         strategy: true,
         branch: true,
         startedAt: true,

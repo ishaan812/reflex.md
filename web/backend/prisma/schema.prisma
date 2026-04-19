@@ -34,6 +34,9 @@ model Session {
   repo          Repo      @relation(fields: [repoId], references: [id])
   checkpointId  String
   idx           Int
+  agent         String?
+  sessionId     String?
+  turnId        String?
   strategy      String
   branch        String?
   startedAt     DateTime
@@ -41,6 +44,9 @@ model Session {
   filesTouched  String[]
   tokenUsage    Json
   events        Json
+  prompt        String?   @db.Text
+  context       String?   @db.Text
+  attribution   Json?
   frictionScore Float     @default(0)
 
   @@unique([repoId, checkpointId, idx])

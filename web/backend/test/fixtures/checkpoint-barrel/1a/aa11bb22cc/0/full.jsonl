@@ -1,4 +1,0 @@
-{"type":"user_prompt","ts":"2026-04-19T09:00:00Z","role":"user","text":"Update the README with install instructions"}
-{"type":"agent_response","ts":"2026-04-19T09:00:30Z","role":"assistant","text":"Done."}
-{"type":"file_write","ts":"2026-04-19T09:01:00Z","path":"README.md","bytes":450,"hash":"sha256:def"}
-{"type":"user_prompt","ts":"2026-04-19T09:15:00Z","role":"user","text":"Looks great, thanks"}

@@ -19,12 +19,7 @@ export function SessionRow({
 }) {
   const bucket = frictionBucket(session.frictionScore);
   const started = new Date(session.startedAt);
-  const dur =
-    session.endedAt != null
-      ? Math.round(
-          (new Date(session.endedAt).getTime() - started.getTime()) / 60000,
-        )
-      : null;
+  const agent = session.agent ?? "Unknown Agent";
   return (
     <button
       type="button"
@@ -32,21 +27,27 @@ export function SessionRow({
       className={cn(
         "w-full text-left p-4 border border-border-main bg-bg-card transition-all duration-200 rounded-[4px]",
         "hover:border-border-green hover:shadow-[0_0_14px_rgba(0,255,65,0.08)]",
-        selected && "border-border-green shadow-[0_0_18px_rgba(0,255,65,0.18)] bg-[rgba(0,255,65,0.03)]",
+        selected &&
+          "border-border-green shadow-[0_0_18px_rgba(0,255,65,0.18)] bg-[rgba(0,255,65,0.03)]",
       )}
     >
       <div className="flex items-center justify-between gap-2 mb-2">
-        <Badge variant="outline">{session.strategy}</Badge>
-        <Badge variant={bucket}>
-          FQ {session.frictionScore.toFixed(2)}
-        </Badge>
+        <div className="flex items-center gap-1.5 min-w-0">
+          <Badge variant="default" className="truncate">
+            {agent}
+          </Badge>
+          <Badge variant="muted" className="shrink-0">
+            {session.strategy}
+          </Badge>
+        </div>
+        <Badge variant={bucket}>FQ {session.frictionScore.toFixed(2)}</Badge>
       </div>
       <div className="font-mono text-[11px] text-text-secondary truncate">
         {session.checkpointId.slice(0, 12)} · session #{session.idx}
+        {session.turnId && ` · turn ${session.turnId.slice(0, 8)}`}
       </div>
       <div className="font-mono text-[11px] text-text-dim mt-1">
         {started.toLocaleString()}
-        {dur != null && ` · ${dur}m`}
       </div>
       {session.branch && (
         <div className="font-mono text-[11px] text-text-dim mt-1 truncate">
@@ -55,7 +56,8 @@ export function SessionRow({
       )}
       {session.filesTouched.length > 0 && (
         <div className="font-mono text-[10px] text-text-dim mt-1 truncate">
-          {session.filesTouched.length} file{session.filesTouched.length === 1 ? "" : "s"} touched
+          {session.filesTouched.length} file
+          {session.filesTouched.length === 1 ? "" : "s"} touched
         </div>
       )}
     </button>

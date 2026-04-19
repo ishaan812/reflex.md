@@ -29,6 +29,9 @@ export interface SessionSummary {
   id: string;
   checkpointId: string;
   idx: number;
+  agent: string | null;
+  sessionId: string | null;
+  turnId: string | null;
   strategy: string;
   branch: string | null;
   startedAt: string;
@@ -38,8 +41,35 @@ export interface SessionSummary {
   frictionScore: number;
 }
 
+export type NormalizedKind =
+  | "user"
+  | "assistant"
+  | "tool_call"
+  | "tool_result"
+  | "file_write"
+  | "todo"
+  | "raw";
+
+export interface NormalizedEvent {
+  kind: NormalizedKind;
+  ts?: string;
+  text?: string;
+  toolName?: string;
+  toolUseId?: string;
+  args?: unknown;
+  exitCode?: number;
+  path?: string;
+  bytes?: number;
+  todos?: Array<{ content: string; status: string; priority?: string }>;
+  raw: unknown;
+}
+
 export interface SessionDetail extends SessionSummary {
-  events: Array<Record<string, any>>;
+  prompt: string | null;
+  context: string | null;
+  attribution: Record<string, any> | null;
+  events: unknown[];
+  normalizedEvents: NormalizedEvent[];
   repo: { owner: string; name: string };
 }
 

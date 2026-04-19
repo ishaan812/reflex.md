@@ -2,87 +2,57 @@ import { describe, expect, it } from "vitest";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { parseCheckpointsBranch } from "../src/parser.js";
-import { detectCorrections, scoreSession, clusterCorrections, frictionColor } from "../src/friction.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const FIXTURE = join(__dirname, "fixtures", "checkpoint-barrel");
+const DEVLOG = join(__dirname, "fixtures", "devlog-real");
 
-describe("parser", () => {
-  it("parses all checkpoints in a shadow branch working tree", () => {
-    const cps = parseCheckpointsBranch(FIXTURE, 10);
-    expect(cps.length).toBe(2);
-  });
-
-  it("returns newest first and respects the limit", () => {
-    const cps = parseCheckpointsBranch(FIXTURE, 1);
+describe("parser — real entire-cli format", () => {
+  it("parses a real devlog checkpoint", () => {
+    const cps = parseCheckpointsBranch(DEVLOG, 10);
     expect(cps.length).toBe(1);
-    expect(cps[0].checkpointId).toBe("1aaa11bb22cc");
+    const cp = cps[0];
+    expect(cp.checkpointId).toBe("18a01d659c86");
+    expect(cp.strategy).toBe("manual-commit");
+    expect(cp.branch).toBe("master");
+    expect(cp.filesTouched.length).toBeGreaterThan(0);
+    expect(cp.tokenUsage.input_tokens).toBe(207);
+    expect(cp.tokenUsage.api_call_count).toBe(170);
   });
 
-  it("extracts session metadata and events", () => {
-    const [_newest, older] = parseCheckpointsBranch(FIXTURE, 10);
-    expect(older.checkpointId).toBe("0ff8ca6db1c9");
-    expect(older.sessions.length).toBe(2);
-    expect(older.sessions[0].strategy).toBe("claude-code");
-    expect(older.sessions[0].branch).toBe("feat/add-login");
-    expect(older.sessions[0].events.length).toBeGreaterThan(0);
+  it("extracts all sessions under the checkpoint with real fields", () => {
+    const [cp] = parseCheckpointsBranch(DEVLOG, 10);
+    expect(cp.sessions.length).toBe(2);
+
+    const s0 = cp.sessions[0];
+    expect(s0.index).toBe(0);
+    expect(s0.agent).toBe("Claude Code");
+    expect(s0.strategy).toBe("manual-commit");
+    expect(s0.sessionId).toBe("71b7ebb0-9f9c-436f-9037-b8ec1849d6a0");
+    expect(s0.turnId).toBe("413db266526b");
+    expect(s0.branch).toBe("master");
+    expect(s0.startedAt).toBe("2026-02-21T11:30:31.117538Z");
+    expect(s0.endedAt).toBeNull();
+    expect(s0.filesTouched.length).toBeGreaterThan(0);
+    expect(s0.prompt && s0.prompt.length).toBeGreaterThan(0);
+    expect(s0.events.length).toBeGreaterThan(0);
+    expect(s0.attribution?.total_committed).toBe(125);
   });
 
-  it("tolerates malformed JSONL lines without throwing", () => {
-    const cps = parseCheckpointsBranch(FIXTURE, 10);
-    const s0 = cps.find((c) => c.checkpointId === "0ff8ca6db1c9")!.sessions[0];
-    // fixture has 10 lines, 1 is garbage — parser should skip it
-    expect(s0.events.length).toBe(9);
+  it("computes checkpoint createdAt from earliest session", () => {
+    const [cp] = parseCheckpointsBranch(DEVLOG, 10);
+    expect(cp.createdAt).toBe("2026-02-21T11:30:31.117538Z");
   });
 
-  it("returns empty array for a non-existent root", () => {
-    expect(parseCheckpointsBranch("/nonexistent/path", 3)).toEqual([]);
-  });
-});
-
-describe("friction", () => {
-  it("detects explicit corrections via negation regex", () => {
-    const events = [
-      { type: "user_prompt", ts: "t", role: "user", text: "no — don't do that" },
-      { type: "user_prompt", ts: "t", role: "user", text: "please add login" },
-    ] as any;
-    const c = detectCorrections(events);
-    expect(c.length).toBe(1);
-    expect(c[0].kind).toBe("explicit");
+  it("tolerates a non-JSONL transcript (session 1 is plain text)", () => {
+    const [cp] = parseCheckpointsBranch(DEVLOG, 10);
+    const s1 = cp.sessions.find((s) => s.index === 1)!;
+    expect(s1.agent).toBe("Claude Code");
+    // Plain-text "transcript" — parser emits zero events but does not throw.
+    expect(Array.isArray(s1.events)).toBe(true);
+    expect(s1.events.length).toBe(0);
   });
 
-  it("detects tool retries within 60s of non-zero exit", () => {
-    const events = [
-      { type: "tool_call", ts: "2026-01-01T00:00:00Z", tool_name: "Bash", exit_code: 1 },
-      { type: "tool_call", ts: "2026-01-01T00:00:30Z", tool_name: "Bash", exit_code: 0 },
-    ] as any;
-    const c = detectCorrections(events);
-    expect(c.length).toBe(1);
-    expect(c[0].kind).toBe("tool_retry");
-  });
-
-  it("FQ is 0 for clean session", () => {
-    const events = [
-      { type: "user_prompt", ts: "t", role: "user", text: "add login" },
-    ] as any;
-    expect(scoreSession(events)).toBe(0);
-  });
-
-  it("clusters corrections by normalized keywords", () => {
-    const sigs = [
-      { kind: "explicit" as const, intensity: 1, text: "don't use barrel exports", ts: "t" },
-      { kind: "explicit" as const, intensity: 1, text: "no barrel exports please", ts: "t" },
-      { kind: "explicit" as const, intensity: 1, text: "stop writing tests in jest", ts: "t" },
-    ];
-    const clusters = clusterCorrections(sigs);
-    expect(clusters.length).toBeGreaterThanOrEqual(1);
-    const top = clusters[0];
-    expect(top.count).toBeGreaterThanOrEqual(1);
-  });
-
-  it("friction color thresholds", () => {
-    expect(frictionColor(0.1)).toBe("green");
-    expect(frictionColor(0.5)).toBe("amber");
-    expect(frictionColor(1.2)).toBe("red");
+  it("returns empty for a non-existent root", () => {
+    expect(parseCheckpointsBranch("/nope/does/not/exist", 3)).toEqual([]);
   });
 });

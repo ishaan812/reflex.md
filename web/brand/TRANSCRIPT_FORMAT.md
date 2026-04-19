@@ -1,165 +1,178 @@
-# Transcript Format — `entire/checkpoints/v1`
+# TRANSCRIPT_FORMAT.md — Reflex ↔ entire-cli on-disk contract
 
-This is the **parser contract**. Every assumption about the data lives here. If the shape changes, update this file first, then the parser.
+> **This document reflects what `entireio/cli` v0.4.x actually writes.**
+>
+> Upstream source of truth: [entireio/cli — sessions-and-checkpoints.md](https://github.com/entireio/cli/blob/main/docs/architecture/sessions-and-checkpoints.md).
+>
+> An earlier version of this file documented a fictional schema. Reflex's parser, friction detector, and event drawer were built against that fiction and produced nonsense on real repositories (session timestamps set to `Date.now()`, agent badge always reading "manual-commit", friction quotient always 0, event drawer rendering everything as "Other"). The parser was realigned against this document in commit `align_to_entire`.
 
-## Shadow branch layout
+## Branch
 
-`entire-cli` writes to a shadow branch named `entire/checkpoints/v1`. Checkpoints are sharded by the first 2 hex chars of their ID:
+`entire/checkpoints/v1` — a separate git branch containing metadata only. Checkpoints live under sharded subdirectories keyed by a 12-hex-character checkpoint ID.
+
+Clone recipe Reflex uses (single branch, shallow):
+
+```bash
+git clone --depth 1 --branch entire/checkpoints/v1 --single-branch \
+  https://x-access-token:<token>@github.com/<owner>/<repo>.git <tmpdir>
+```
+
+## On-disk layout
 
 ```
 entire/checkpoints/v1/
-└── 0f/                        # shard = first 2 hex chars
-    └── f8ca6db1c9/            # remainder of checkpoint_id
-        ├── metadata.json       # checkpoint-level metadata
-        └── 0/                  # session index: 0, 1, 2 …
-            ├── full.jsonl      # event stream, one JSON per line
-            ├── metadata.json   # session-level metadata
-            ├── context.md      # formatted prompts (human-readable)
-            ├── prompt.txt      # raw user prompts
-            └── content_hash.txt
+└── <id[:2]>/<id[2:]>/              ← sharded by first 2 hex chars of checkpoint ID
+    ├── metadata.json               ← CheckpointSummary
+    ├── 0/                          ← first session (0-indexed, concurrent sessions allowed)
+    │   ├── metadata.json           ← per-session CommittedMetadata
+    │   ├── full.jsonl              ← agent-specific transcript stream
+    │   ├── prompt.txt              ← canonical user prompt(s) for this checkpoint
+    │   ├── context.md              ← optional formatted context
+    │   └── content_hash.txt        ← integrity hash
+    └── 1/                          ← second concurrent session, same structure
+        └── …
 ```
 
-**Full checkpoint ID** = shard + remainder, so `0f/f8ca6db1c9/` → `0ff8ca6db1c9`.
+## Checkpoint-level `metadata.json` (CheckpointSummary)
 
-## Commit ↔ checkpoint linkage
-
-Every `entire`-tracked commit carries a trailer:
-
-```
-Checkpoint-Id: 0ff8ca6db1c9
-```
-
-So we can join commits to sessions without a separate index. Use `git log --format=%B` and parse trailers with `git interpret-trailers`.
-
-## Checkpoint `metadata.json` (top-level)
-
-Fields we rely on:
-
-```jsonc
+```json
 {
-  "checkpoint_id": "0ff8ca6db1c9",
-  "created_at": "2026-04-18T14:02:11Z",
-  "strategy": "claude-code",   // or "cursor" | "copilot" | "gemini"
+  "cli_version": "0.4.5",
+  "checkpoint_id": "18a01d659c86",
+  "strategy": "manual-commit",
+  "branch": "master",
+  "checkpoints_count": 1,
+  "files_touched": ["path/one.go", "path/two.go"],
   "sessions": [
-    { "index": 0, "started_at": "...", "ended_at": "..." }
-    // ...
-  ]
-}
-```
-
-**Unknown fields:** preserve as-is on the Checkpoint row so we don't lose data on format bumps.
-
-## Session `metadata.json`
-
-Fields we rely on:
-
-```jsonc
-{
-  "strategy_name": "claude-code",
-  "branch": "feat/add-login",
-  "files_touched": ["src/auth/login.ts", "src/auth/session.ts"],
+    { "metadata": "/18/a01d659c86/0/metadata.json",
+      "transcript": "/18/a01d659c86/0/full.jsonl",
+      "context": "/18/a01d659c86/0/context.md",
+      "content_hash": "/18/a01d659c86/0/content_hash.txt",
+      "prompt": "/18/a01d659c86/0/prompt.txt" }
+  ],
   "token_usage": {
-    "input_tokens": 14523,
-    "cache_read_tokens": 9102,
-    "output_tokens": 3481,
-    "api_calls": 42
-  },
-  "started_at": "2026-04-18T14:02:11Z",
-  "ended_at":   "2026-04-18T14:41:02Z"
+    "input_tokens": 207,
+    "cache_creation_tokens": 130476,
+    "cache_read_tokens": 13248087,
+    "output_tokens": 19809,
+    "api_call_count": 170
+  }
 }
 ```
 
-## `full.jsonl` — event stream
+Important non-obvious facts:
 
-One JSON object per line. Parser treats unknown `type` values as pass-through (don't throw). Known event types:
+- **No `created_at`** at this level. Reflex derives checkpoint ordering from the earliest `created_at` among the per-session metadata files.
+- **`strategy` is the storage strategy** (`manual-commit`), NOT the agent name. The agent name lives in each per-session metadata file.
+- `sessions[].context` and `sessions[].prompt` may be empty strings when the agent did not produce them.
+- `token_usage` uses snake_case keys everywhere.
 
-| `type` | Meaning | Key fields |
-|---|---|---|
-| `user_prompt` | Human-typed prompt | `ts`, `role: "user"`, `text` |
-| `agent_response` | Agent message | `ts`, `role: "assistant"`, `text`, `tool_calls[]` (optional) |
-| `tool_call` | Agent invoking a tool | `ts`, `tool_name`, `tool_call_id`, `args`, `exit_code` (when available) |
-| `tool_result` | Tool returning | `ts`, `tool_call_id`, `output`, `exit_code` |
-| `file_write` | File changed by agent | `ts`, `path`, `bytes`, `hash` |
-| `subagent_spawn` | Nested agent start | `ts`, `parent_id`, `child_id`, `purpose` |
-| `todo_write` | TodoWrite snapshot | `ts`, `todos[]` |
-
-### Annotated sample line
+## Session-level `<n>/metadata.json` (CommittedMetadata)
 
 ```json
-{"type":"tool_call","ts":"2026-04-18T14:05:22Z","tool_call_id":"tc_01abc","tool_name":"Bash","args":{"command":"pnpm test"},"exit_code":1}
+{
+  "cli_version": "0.4.5",
+  "checkpoint_id": "18a01d659c86",
+  "session_id": "71b7ebb0-9f9c-436f-9037-b8ec1849d6a0",
+  "strategy": "manual-commit",
+  "created_at": "2026-02-21T11:30:31.117538Z",
+  "branch": "master",
+  "agent": "Claude Code",
+  "turn_id": "413db266526b",
+  "checkpoints_count": 1,
+  "files_touched": ["…"],
+  "token_usage": { "input_tokens": 207, "…": 0 },
+  "initial_attribution": {
+    "calculated_at": "…",
+    "agent_lines": 0,
+    "human_added": 125,
+    "human_modified": 63,
+    "human_removed": 0,
+    "total_committed": 125,
+    "agent_percentage": 0
+  },
+  "transcript_path": ".claude/projects/…/<session-uuid>.jsonl"
+}
 ```
 
-- `exit_code: 1` combined with a following `tool_call` for the same `tool_name` within 60s → **tool-failure retry** signal.
+Notes:
 
-### Sample session (condensed)
+- **`agent`** is the actual agent name (`"Claude Code"`, `"Codex"`, `"Gemini CLI"`, `"Cursor"`, `"Copilot CLI"`, `"OpenCode"`, etc.). Reflex surfaces this as the primary badge in the UI.
+- **`session_id`** is a UUID. It may be `"unknown"` for some agents.
+- **No `ended_at`**; the cli does not track session end.
+- **No `started_at`**; use `created_at`.
+- `transcript_path` points back to the original agent-side transcript location for audit.
 
-```json
-{"type":"user_prompt","ts":"2026-04-18T14:02:11Z","role":"user","text":"Add a login route"}
-{"type":"agent_response","ts":"2026-04-18T14:02:34Z","role":"assistant","text":"I'll add the route and tests..."}
-{"type":"tool_call","ts":"2026-04-18T14:03:02Z","tool_call_id":"tc_01","tool_name":"Write","args":{"path":"src/auth/login.ts"}}
-{"type":"file_write","ts":"2026-04-18T14:03:03Z","path":"src/auth/login.ts","bytes":1840,"hash":"sha256:..."}
-{"type":"tool_call","ts":"2026-04-18T14:03:40Z","tool_call_id":"tc_02","tool_name":"Bash","args":{"command":"pnpm test"},"exit_code":1}
-{"type":"tool_call","ts":"2026-04-18T14:04:10Z","tool_call_id":"tc_03","tool_name":"Bash","args":{"command":"pnpm test -- auth"},"exit_code":0}
-{"type":"user_prompt","ts":"2026-04-18T14:05:50Z","role":"user","text":"no — don't use barrel exports, import directly from the module"}
-```
+## `full.jsonl` (agent-specific)
 
-Last line is an **explicit correction** (intensity 1). If the agent's next `file_write` undoes a barrel export introduced in `tc_01`, it's also an **implicit correction** signal.
+The cli is deliberately agnostic — whatever the agent's hook captures is streamed verbatim into `full.jsonl`. The filename is a convention, not a guarantee of JSONL: some agents (e.g. Cursor) write plain-text transcripts under the same name.
 
-## Redaction
+### Claude Code (most common)
 
-`entire-cli` redacts secrets best-effort. We **re-run** a redaction pass before anything reaches the LLM. Patterns covered (defense in depth):
+Identical to `~/.claude/projects/<encoded-path>/<session-uuid>.jsonl`. Representative line types:
 
-- `sk-[A-Za-z0-9]{20,}` (OpenAI / generic)
-- `ghp_[A-Za-z0-9]{36,}` (GitHub PATs)
-- `AKIA[0-9A-Z]{16}` (AWS access keys)
-- `xox[baprs]-[A-Za-z0-9-]+` (Slack)
-- Anything tagged by `entire` already with `[REDACTED]` — leave untouched.
+| `type`                  | Shape | Notes |
+|-------------------------|-------|-------|
+| `user`                  | `{ type, message: { role:"user", content: string \| Block[] } }` | User message. `content` may be a string or an array of content blocks. |
+| `user` (tool_result)    | `message.content[] = [{ type:"tool_result", tool_use_id, content, is_error? }]` | Tool result envelopes ride on a `user` entry. |
+| `assistant`             | `{ type, message: { role:"assistant", content: [{ type:"text", text } \| { type:"tool_use", id, name, input }] } }` | Assistant turn. One turn may include text and multiple tool calls. |
+| `summary`               | `{ type, summary: string }` | Session summary. |
+| `progress`              | Internal progress markers. | Not rendered. |
+| `file-history-snapshot` | Internal state snapshot. | Not rendered. |
+| `system`                | Internal system events. | Not rendered. |
 
-Redaction replaces the match with `[REDACTED:<kind>]`.
+### Other agents
 
-## Parser behavior spec
+Cursor, Codex, Gemini, Copilot, Aider, OpenCode each use their own shape. Reflex currently has no adapter for these and treats each line as an opaque `{ kind: "raw", raw: <line> }` event.
 
-- **Input:** path to a cloned repo with `entire/checkpoints/v1` checked out into a working tree (either as a branch or a `git archive`-extracted tree).
-- **Output:** `Checkpoint` objects with nested `Session` objects whose `events` are the parsed `full.jsonl` lines.
-- **Guarantees:**
-  - Agent-agnostic: no branching on `strategy_name` for parsing. `strategy_name` is metadata only.
-  - Idempotent: same input → same output, re-ingest safe (we upsert on `checkpoint_id`).
-  - Tolerant: unknown event types pass through; malformed JSON lines get logged and skipped, not thrown.
-  - Stable keys: `checkpoint_id` is our primary key. Don't invent IDs.
+## `prompt.txt`
 
-## TypeScript shape (reference)
+Plain-text file containing the user's typed prompt(s) that bracket this checkpoint. Paragraphs are separated by blank lines. This is the **most reliable cross-agent friction signal** because every strategy produces it.
+
+## Reflex's normalized event model
+
+To make `full.jsonl` usable in the UI and friction detector, Reflex normalizes raw events into a 7-kind schema via a per-agent adapter:
 
 ```ts
-export interface Checkpoint {
-  checkpointId: string;
-  createdAt: string;           // ISO
-  sessions: Session[];
-  raw: Record<string, unknown>; // preserved unknown fields
-}
+type NormalizedKind =
+  | "user" | "assistant" | "tool_call" | "tool_result"
+  | "file_write" | "todo" | "raw";
 
-export interface Session {
-  index: number;               // 0, 1, 2, …
-  strategy: string;            // "claude-code" | "cursor" | "copilot" | "gemini" | …
-  branch: string | null;
-  filesTouched: string[];
-  tokenUsage: {
-    inputTokens: number;
-    cacheReadTokens: number;
-    outputTokens: number;
-    apiCalls: number;
-  };
-  startedAt: string;
-  endedAt: string | null;
-  events: TranscriptEvent[];
+interface NormalizedEvent {
+  kind: NormalizedKind;
+  ts?: string;
+  text?: string;
+  toolName?: string;
+  toolUseId?: string;
+  args?: unknown;
+  exitCode?: number;       // set on tool_result; non-zero means failure
+  path?: string;           // set on file_write
+  bytes?: number;
+  todos?: Array<{ content: string; status: string; priority?: string }>;
+  raw: unknown;            // original entry, kept for drawer's "Show raw" toggle
 }
-
-export type TranscriptEvent =
-  | { type: "user_prompt"; ts: string; role: "user"; text: string }
-  | { type: "agent_response"; ts: string; role: "assistant"; text: string; toolCalls?: ToolCallRef[] }
-  | { type: "tool_call"; ts: string; toolCallId: string; toolName: string; args: unknown; exitCode?: number }
-  | { type: "tool_result"; ts: string; toolCallId: string; output: string; exitCode?: number }
-  | { type: "file_write"; ts: string; path: string; bytes: number; hash: string }
-  | { type: "subagent_spawn"; ts: string; parentId: string; childId: string; purpose: string }
-  | { type: "todo_write"; ts: string; todos: Array<{ content: string; status: string }> }
-  | { type: "unknown"; ts: string; raw: Record<string, unknown> };
 ```
+
+Claude Code mapping rules (in `backend/src/adapters/claudeCode.ts`):
+
+- `user` with string or text blocks → `user`.
+- `user` with `tool_result` blocks → `tool_result` (one per block).
+- `assistant` text block → `assistant`.
+- `assistant` `tool_use` block → `tool_call` (or `file_write` for `Write|Edit|MultiEdit`, or `todo` for `TodoWrite`).
+- `summary` → `assistant` with `[summary]` prefix.
+- Everything else → `raw`.
+
+Other agents: every line → `raw`.
+
+## Friction signals
+
+Two independent signals feed into `detectCorrections(agent, events, prompt)`:
+
+1. **Explicit corrections** — user messages (from normalized `kind:"user"` events, or paragraph-split `prompt.txt` if no adapter) that match a negation regex. Intensity 1.
+2. **Tool retries** — a `tool_result` with `exitCode !== 0` followed within 60 seconds by another `tool_call` of the same `toolName`. Intensity 2.
+
+`scoreSession` returns `Σ intensity / max(userPromptCount, 1)`; thresholds from `METRICS.md`.
+
+## Changelog
+
+- **2026-04** — Aligned to real entire-cli v0.4.x format. Added `agent`/`prompt`/`context`/`attribution` fields to the Reflex Session model. Added Claude Code adapter and normalized event model. Replaced fabricated fixtures with a trimmed snapshot from `ishaan812/devlog`.

@@ -40,10 +40,18 @@ repoRoutes.get("/sessions/:id", async (req: any, res, next) => {
       include: { repo: { select: { owner: true, name: true } } },
     });
     if (!session) return res.status(404).json({ error: "session not found" });
+    const { normalizeForApi } = await import("./friction.js");
+    const normalized = normalizeForApi(
+      session.agent,
+      (session.events as unknown[]) ?? [],
+    );
     res.json({
       id: session.id,
       checkpointId: session.checkpointId,
       idx: session.idx,
+      agent: session.agent,
+      sessionId: session.sessionId,
+      turnId: session.turnId,
       strategy: session.strategy,
       branch: session.branch,
       startedAt: session.startedAt,
@@ -51,7 +59,11 @@ repoRoutes.get("/sessions/:id", async (req: any, res, next) => {
       filesTouched: session.filesTouched,
       tokenUsage: session.tokenUsage,
       frictionScore: session.frictionScore,
+      prompt: session.prompt,
+      context: session.context,
+      attribution: session.attribution,
       events: session.events,
+      normalizedEvents: normalized,
       repo: session.repo,
     });
   } catch (e) {

@@ -30,8 +30,9 @@ analyzeRoutes.post(
           .json({ error: "no sessions to analyze. Re-run ingest." });
       }
 
+      const { normalizeForApi } = await import("./friction.js");
       const allCorrections = repo.sessions.flatMap((s) =>
-        detectCorrections(s.events as any),
+        detectCorrections(s.agent, s.events as any, s.prompt),
       );
       const clusters = clusterCorrections(allCorrections);
       const fq =
@@ -41,14 +42,25 @@ analyzeRoutes.post(
       const gh = new Octokit({ auth: req.user.accessToken });
       const target = await fetchInstructionFile(gh, owner, name);
 
-      const evidenceSessions = repo.sessions.map((s) => ({
-        checkpointId: s.checkpointId,
-        strategy: s.strategy,
-        samplePrompts: (s.events as any[])
-          .filter((e: any) => e.type === "user_prompt")
+      const evidenceSessions = repo.sessions.map((s) => {
+        const norm = normalizeForApi(s.agent, (s.events as unknown[]) ?? []);
+        const eventPrompts = norm
+          .filter((e) => e.kind === "user" && typeof e.text === "string")
           .slice(0, 10)
-          .map((e: any) => String(e.text ?? "").slice(0, 200)),
-      }));
+          .map((e) => String(e.text).slice(0, 400));
+        const fallback = (s.prompt ?? "")
+          .split(/\n{2,}/)
+          .map((p) => p.trim())
+          .filter(Boolean)
+          .slice(0, 10)
+          .map((t) => t.slice(0, 400));
+        return {
+          checkpointId: s.checkpointId,
+          strategy: s.strategy,
+          agent: s.agent ?? "Unknown",
+          samplePrompts: eventPrompts.length ? eventPrompts : fallback,
+        };
+      });
 
       const proposed = await optimizeInstructionFile({
         targetFile: target.path,

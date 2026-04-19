@@ -1,0 +1,101 @@
+{
+  "info": {
+    "id": "ses_25b78915effeSmJm9ZZ51CL0Rb",
+    "slug": "eager-island",
+    "projectID": "44ea25f75c9c07febe88853429e779204254e8fb",
+    "directory": "/Users/bhavya_gor/work/reflex.md",
+    "title": "Greeting message: quick check-in",
+    "version": "1.14.17",
+    "summary": {
+      "additions": 0,
+      "deletions": 0,
+      "files": 0
+    },
+    "time": {
+      "created": 1776581832353,
+      "updated": 1776581834435
+    }
+  },
+  "messages": [
+    {
+      "info": {
+        "role": "user",
+        "time": {
+          "created": 1776581832369
+        },
+        "agent": "build",
+        "model": {
+          "providerID": "opencode",
+          "modelID": "claude-opus-4-7",
+          "variant": "xhigh"
+        },
+        "summary": {
+          "diffs": []
+        },
+        "id": "msg_da4876ea7001WKih2abNnYtvHv",
+        "sessionID": "ses_25b78915effeSmJm9ZZ51CL0Rb"
+      },
+      "parts": [
+        {
+          "type": "text",
+          "text": "hello world",
+          "id": "prt_da4876ea8001qvarf2z17d6TfG",
+          "sessionID": "ses_25b78915effeSmJm9ZZ51CL0Rb",
+          "messageID": "msg_da4876ea7001WKih2abNnYtvHv"
+        }
+      ]
+    },
+    {
+      "info": {
+        "parentID": "msg_da4876ea7001WKih2abNnYtvHv",
+        "role": "assistant",
+        "mode": "build",
+        "agent": "build",
+        "variant": "xhigh",
+        "path": {
+          "cwd": "/Users/bhavya_gor/work/reflex.md",
+          "root": "/Users/bhavya_gor/work/reflex.md"
+        },
+        "cost": 0,
+        "tokens": {
+          "input": 0,
+          "output": 0,
+          "reasoning": 0,
+          "cache": {
+            "read": 0,
+            "write": 0
+          }
+        },
+        "modelID": "claude-opus-4-7",
+        "providerID": "opencode",
+        "time": {
+          "created": 1776581832382,
+          "completed": 1776581835675
+        },
+        "error": {
+          "name": "APIError",
+          "data": {
+            "message": "Bad Request: {\"message\":\"output_config.effort: Input should be 'low', 'medium', 'high' or 'max'\"}",
+            "statusCode": 400,
+            "isRetryable": false,
+            "responseHeaders": {
+              "cf-ray": "9eea03899ccac331-EWR",
+              "connection": "keep-alive",
+              "content-type": "application/json",
+              "date": "Sun, 19 Apr 2026 06:57:14 GMT",
+              "server": "cloudflare",
+              "transfer-encoding": "chunked"
+            },
+            "responseBody": "{\"error_code\":\"BAD_REQUEST\",\"message\":\"{\\\"message\\\":\\\"output_config.effort: Input should be 'low', 'medium', 'high' or 'max'\\\"}\"}",
+            "metadata": {
+              "url": "https://opencode.ai/zen/v1/messages"
+            }
+          }
+        },
+        "id": "msg_da4876ebe001jx9NitJ8fjQxHq",
+        "sessionID": "ses_25b78915effeSmJm9ZZ51CL0Rb"
+      },
+      "parts": []
+    }
+  ]
+}

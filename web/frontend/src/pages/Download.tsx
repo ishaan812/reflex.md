@@ -10,7 +10,7 @@ const RELEASE_PAGE = `https://github.com/${REPO}/releases/latest`;
 // Predictable GitHub Releases asset pattern. electron-builder currently
 // emits Reflex-<version>-arm64.dmg. Users can fall back to the releases
 // page if a given version is missing.
-const DMG_ARM64 = `https://github.com/${REPO}/releases/latest/download/Reflex-0.1.0-arm64.dmg`;
+const DMG_ARM64 = `https://github.com/${REPO}/releases/latest/download/Reflex-0.2.0-arm64.dmg`;
 
 const INSTALL_STEPS = [
   {

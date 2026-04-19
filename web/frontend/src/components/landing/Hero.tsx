@@ -15,7 +15,7 @@ export function Hero() {
 
       <div className="inline-flex items-center gap-2 py-1.5 px-4 bg-[rgba(0,255,65,0.08)] border border-border-green rounded-[20px] text-[10px] tracking-[2px] uppercase text-green mb-10">
         <span className="w-1.5 h-1.5 rounded-full bg-green animate-pulse-dot" aria-hidden="true" />
-        <span>Agent Workflow Optimizer // v0.1.0</span>
+        <span>Agent Workflow Optimizer // v0.2.0</span>
       </div>
 
       <h1

@@ -65,7 +65,7 @@ authRoutes.get("/github/callback", async (req, res, next) => {
       secure: false,
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
-    res.redirect(`${process.env.FRONTEND_ORIGIN}/repos`);
+    res.redirect(`${process.env.FRONTEND_ORIGIN}/download`);
   } catch (e) {
     next(e);
   }

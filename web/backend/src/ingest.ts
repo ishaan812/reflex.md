@@ -3,7 +3,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { prisma } from "./prisma.js";
-import { parseCheckpointsBranch } from "./parser.js";
+import { parseCheckpointsBranch, takeParseWarnings } from "./parser.js";
 import { scoreSession } from "./friction.js";
 
 export async function ingestRepo(
@@ -22,6 +22,7 @@ export async function ingestRepo(
       "--single-branch",
     ]);
     const checkpoints = parseCheckpointsBranch(dir, 3);
+    const parseWarnings = takeParseWarnings();
 
     const repo = await prisma.repo.upsert({
       where: { userId_owner_name: { userId: user.id, owner, name } },
@@ -48,6 +49,8 @@ export async function ingestRepo(
             agent: s.agent,
             sessionId: s.sessionId,
             turnId: s.turnId,
+            startedAt: new Date(s.startedAt),
+            endedAt: s.endedAt ? new Date(s.endedAt) : null,
             prompt: s.prompt,
             context: s.context,
             attribution: (s.attribution ?? null) as any,
@@ -99,7 +102,7 @@ export async function ingestRepo(
       },
     });
 
-    return { repo: { id: repo.id, owner, name }, sessions };
+    return { repo: { id: repo.id, owner, name }, sessions, parseWarnings };
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }

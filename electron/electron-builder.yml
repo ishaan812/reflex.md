@@ -30,10 +30,15 @@ mac:
     - target: zip
       arch:
         - arm64
-  hardenedRuntime: true
+  # Unsigned / ad-hoc signed build (no Apple Developer account required).
+  # electron-builder will ad-hoc sign the app when identity is null, which is
+  # mandatory on Apple Silicon. Hardened runtime is disabled because it
+  # requires a real Developer ID signature.
+  identity: null
+  hardenedRuntime: false
   gatekeeperAssess: false
-  entitlements: build/entitlements.mac.plist
-  entitlementsInherit: build/entitlements.mac.plist
+  type: distribution
 
 dmg:
   sign: false
+  writeUpdateInfo: false

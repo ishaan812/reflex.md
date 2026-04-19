@@ -102,6 +102,47 @@ describe("friction", () => {
     expect(clusters.length).toBeGreaterThanOrEqual(1);
   });
 
+  it("detects tool_retry for OpenCode sessions (regression: paired tool_call/tool_result)", () => {
+    // Single OpenCode "document" containing two assistant messages: a failing
+    // bash call followed by a retry of the same tool within the 60s window.
+    const T = 1_700_000_000_000;
+    const msg1 = {
+      info: { role: "assistant", time: { created: T, updated: T + 200 } },
+      parts: [
+        {
+          type: "tool-invocation",
+          toolInvocation: {
+            toolCallId: "a",
+            toolName: "bash",
+            args: { command: "pnpm test" },
+            state: "error",
+            result: "exit 1",
+          },
+        },
+      ],
+    };
+    const msg2 = {
+      info: {
+        role: "assistant",
+        time: { created: T + 10_000, updated: T + 10_500 },
+      },
+      parts: [
+        {
+          type: "tool-invocation",
+          toolInvocation: {
+            toolCallId: "b",
+            toolName: "bash",
+            args: { command: "pnpm test -- --run" },
+            state: "result",
+            result: "PASS",
+          },
+        },
+      ],
+    };
+    const sigs = detectCorrections("OpenCode", [msg1, msg2], null);
+    expect(sigs.some((s) => s.kind === "tool_retry")).toBe(true);
+  });
+
   it("scores the real devlog session (smoke)", () => {
     const [cp] = parseCheckpointsBranch(DEVLOG, 10);
     for (const s of cp.sessions) {

@@ -27,10 +27,16 @@ export function Navbar() {
           /Features
         </a>
         <a
-          href="/repos"
+          href="/playground"
+          className="hidden md:inline font-mono text-xs text-text-secondary no-underline tracking-[1px] uppercase transition-colors duration-200 hover:text-green"
+        >
+          /Playground
+        </a>
+        <a
+          href="/download"
           className="font-mono text-xs text-green no-underline tracking-[1px] uppercase transition-colors duration-200 hover:text-green-dim"
         >
-          /Dashboard
+          /Download
         </a>
         <a
           href="https://github.com/ishaan812/reflex.md"

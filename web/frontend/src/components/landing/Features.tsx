@@ -2,22 +2,22 @@ const FEATURES = [
   {
     num: "01 // Connect",
     title: "GitHub OAuth, Zero Config",
-    desc: "One click to authorize. Reflex reads only your entire-cli shadow branch — never your source code. Your secrets stay yours.",
+    desc: "One click to authorize. Install the desktop app and point it at your repo. Your source code never leaves your machine.",
   },
   {
-    num: "02 // Ingest",
-    title: "Parse Every Session",
-    desc: "Shallow-clones entire/checkpoints/v1, parses the last 3 checkpoints, and renders a session-by-session friction timeline with per-run Friction Quotient.",
+    num: "02 // Observe",
+    title: "Watch Agents Work",
+    desc: "Reflex sits alongside Claude Code, Cursor, Copilot, and friends. It records what your agents do and where you push back — a friction timeline with a per-run Friction Quotient.",
   },
   {
     num: "03 // Detect",
-    title: "Find Repeated Corrections",
-    desc: "Classifies prompts, clusters semantically similar corrections across sessions, and surfaces the patterns your agent keeps violating.",
+    title: "Find Repeated Mistakes",
+    desc: "Clusters the corrections you keep typing, across sessions and agents, and surfaces the patterns your tooling keeps violating.",
   },
   {
     num: "04 // Propose",
     title: "Open an Auditable PR",
-    desc: "Writes a minimal edit to AGENTS.md or CLAUDE.md. Every rule cites the exact checkpoint IDs it came from. You review. You merge. Done.",
+    desc: "Writes a minimal edit to AGENTS.md or CLAUDE.md. Every rule cites the exact session it came from. You review. You merge. Done.",
   },
 ];
 
@@ -39,8 +39,8 @@ export function Features() {
         </h2>
         <p className="mt-3 text-sm text-text-secondary max-w-[560px]">
           You tell the agent "don't use barrel exports" on Monday. It uses them on
-          Tuesday. Reflex.md mines the signal that's already sitting in your
-          transcripts, and ships a PR that actually sticks.
+          Tuesday. Reflex.md mines the signal that's already in your workflow and
+          ships a PR that actually sticks.
         </p>
       </header>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6" role="list">

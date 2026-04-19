@@ -14,13 +14,13 @@ export function Marquee() {
   return (
     <section
       className="py-[60px] overflow-hidden border-y border-border-main"
-      aria-label="Compatible agent strategies"
+      aria-label="Compatible agents"
     >
       <div
         className="text-center text-[10px] text-green tracking-[3px] uppercase mb-8"
         aria-hidden="true"
       >
-        &lt; Detects friction from any strategy /&gt;
+        &lt; Optimizes workflows across every agent /&gt;
       </div>
       <div
         className="flex w-max animate-marquee hover:[animation-play-state:paused]"

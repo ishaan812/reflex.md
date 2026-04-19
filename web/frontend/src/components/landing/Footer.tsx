@@ -20,18 +20,16 @@ export function Footer() {
           GitHub
         </a>
         <a
-          href="https://github.com/entire-dev/entire-cli"
-          target="_blank"
-          rel="noopener noreferrer"
+          href="/playground"
           className="text-text-dim no-underline uppercase tracking-[1px] text-[11px] transition-colors duration-200 hover:text-green"
         >
-          entire-cli
+          Playground
         </a>
         <a
-          href="/repos"
+          href="/download"
           className="text-text-dim no-underline uppercase tracking-[1px] text-[11px] transition-colors duration-200 hover:text-green"
         >
-          Dashboard
+          Download
         </a>
       </nav>
     </footer>

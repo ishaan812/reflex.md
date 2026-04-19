@@ -1,22 +1,21 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter } from "react-router-dom";
+import posthog from "posthog-js";
 import App from "./App";
 import "./index.css";
 
-const qc = new QueryClient({
-  defaultOptions: {
-    queries: { retry: false, refetchOnWindowFocus: false, staleTime: 30_000 },
-  },
+posthog.init("phc_kv2AhuSqbck6ZiMikvA8ZHogcBzaiL3TKVkcJwXBz2W4", {
+  api_host: "https://us.i.posthog.com",
+  person_profiles: "identified_only",
+  capture_pageview: true,
+  capture_pageleave: true,
 });
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <QueryClientProvider client={qc}>
-      <BrowserRouter>
-        <App />
-      </BrowserRouter>
-    </QueryClientProvider>
+    <BrowserRouter>
+      <App />
+    </BrowserRouter>
   </React.StrictMode>,
 );

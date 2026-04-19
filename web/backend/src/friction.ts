@@ -59,7 +59,13 @@ export function detectCorrections(
       if (n.kind !== "tool_call" && n.kind !== "file_write") continue;
       const dt = tsMs(n.ts);
       if (dt == null) continue;
-      if (dt - baseTs < 0 || dt - baseTs > 60_000) break;
+      // Non-monotonic timestamps are valid (Claude Code bundles tool_uses into
+      // one assistant turn with identical ts; OpenCode can report out-of-order
+      // completion times). Skip out-of-window entries without terminating the
+      // scan.
+      const delta = dt - baseTs;
+      if (delta < 0) continue;
+      if (delta > 60_000) break;
       if (n.toolName && sourceCall.toolName && n.toolName === sourceCall.toolName) {
         out.push({
           kind: "tool_retry",

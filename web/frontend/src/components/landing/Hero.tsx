@@ -1,4 +1,4 @@
-import { Github, ArrowRight } from "lucide-react";
+import { Github, ArrowRight, Apple } from "lucide-react";
 
 export function Hero() {
   return (
@@ -15,7 +15,7 @@ export function Hero() {
 
       <div className="inline-flex items-center gap-2 py-1.5 px-4 bg-[rgba(0,255,65,0.08)] border border-border-green rounded-[20px] text-[10px] tracking-[2px] uppercase text-green mb-10">
         <span className="w-1.5 h-1.5 rounded-full bg-green animate-pulse-dot" aria-hidden="true" />
-        <span>Correction Tax Detector Online // v0.1.0</span>
+        <span>Agent Workflow Optimizer // v0.1.0</span>
       </div>
 
       <h1
@@ -30,9 +30,9 @@ export function Hero() {
       </h1>
 
       <p className="font-mono text-[13px] md:text-sm text-text-secondary leading-[1.8] max-w-[560px] mx-auto mb-10">
-        <span className="text-green mr-1" aria-hidden="true">&gt;</span> Reads your <span className="text-green">entire-cli</span> transcripts.
+        <span className="text-green mr-1" aria-hidden="true">&gt;</span> Watches how your coding agents actually work.
         <br />
-        <span className="text-green mr-1" aria-hidden="true">&gt;</span> Finds the mistakes your AI agents keep making.
+        <span className="text-green mr-1" aria-hidden="true">&gt;</span> Finds the mistakes they keep repeating.
         <br />
         <span className="text-green mr-1" aria-hidden="true">&gt;</span> Opens a PR on <span className="text-green">AGENTS.md</span> that teaches them not to.
         <br />
@@ -43,19 +43,28 @@ export function Hero() {
         <a
           href="/auth/github"
           className="btn-clip inline-flex items-center gap-2 py-3.5 px-7 bg-gradient-to-r from-green to-green-dim text-bg-primary font-mono text-[13px] font-bold no-underline border-none cursor-pointer tracking-[1px] uppercase transition-all duration-200 hover:shadow-[0_0_30px_rgba(0,255,65,0.5)] hover:scale-105 group"
-          aria-label="Connect GitHub"
+          aria-label="Sign in with GitHub"
         >
           <Github size={16} className="fill-bg-primary" aria-hidden="true" />
-          Install on GitHub
+          Sign in with GitHub
           <ArrowRight size={14} className="group-hover:translate-x-0.5 transition-transform" aria-hidden="true" />
         </a>
         <a
-          href="#how"
+          href="/download"
           className="btn-clip inline-flex items-center gap-2 py-3 px-5 border border-border-main text-text-secondary font-mono text-[12px] font-medium no-underline cursor-pointer tracking-[1px] uppercase transition-all duration-200 hover:bg-white/5 hover:text-text-primary hover:border-text-dim"
         >
-          How it works
+          <Apple size={14} aria-hidden="true" />
+          Download for macOS
         </a>
       </div>
+
+      <a
+        href="/playground"
+        className="mt-8 inline-flex items-center gap-1.5 font-mono text-[11px] tracking-[1.5px] uppercase text-text-dim hover:text-green transition-colors"
+      >
+        or see it working in the playground
+        <ArrowRight size={12} aria-hidden="true" />
+      </a>
     </section>
   );
 }

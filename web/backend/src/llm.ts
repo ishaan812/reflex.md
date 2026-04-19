@@ -1,12 +1,16 @@
 import { GoogleGenAI, Type } from "@google/genai";
+import { z } from "zod";
 import type {
   CorrectionCluster,
   ProposedEdit,
   ReasoningItem,
 } from "./types.js";
 
-const PRIMARY = process.env.GEMINI_MODEL || "gemini-3.1-flash";
-const FALLBACKS = ["gemini-2.5-flash", "gemini-1.5-flash"];
+// Primary default was `gemini-3.1-flash`, which 404s at the time of writing —
+// PLAN_V1.md documents this. Default to the known-good 2.5-flash so we don't
+// pay a failed-call latency tax on every request. Override with GEMINI_MODEL.
+const PRIMARY = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+const FALLBACKS = ["gemini-1.5-flash"];
 
 const SYSTEM_PROMPT = `You are Reflex.md's instruction optimizer.
 Your job: propose minimal, high-signal edits to an AGENTS.md / CLAUDE.md file
@@ -43,6 +47,19 @@ const RESPONSE_SCHEMA = {
   required: ["afterText", "reasoning"],
 };
 
+// Runtime schema mirroring RESPONSE_SCHEMA. Used to reject malformed LLM
+// output before it reaches the PR renderer.
+const ReasoningItemZ = z.object({
+  rule: z.string().min(1),
+  checkpointIds: z.array(z.string()),
+  evidenceText: z.string(),
+});
+
+const OptimizerResponseZ = z.object({
+  afterText: z.string().min(1),
+  reasoning: z.array(ReasoningItemZ).default([]),
+});
+
 export interface OptimizeInput {
   targetFile: string;
   currentText: string;
@@ -63,6 +80,9 @@ export async function optimizeInstructionFile(
 
   const userPrompt = buildUserPrompt(input);
   const models = [PRIMARY, ...FALLBACKS.filter((m) => m !== PRIMARY)];
+  const validCheckpointIds = new Set(
+    input.evidenceSessions.map((s) => s.checkpointId),
+  );
 
   let lastErr: unknown;
   for (const model of models) {
@@ -79,15 +99,48 @@ export async function optimizeInstructionFile(
       });
       const text = (resp as any).text ?? "";
       if (!text) throw new Error(`model ${model} returned empty text`);
-      const parsed = JSON.parse(text) as {
-        afterText: string;
-        reasoning: ReasoningItem[];
-      };
+      let json: unknown;
+      try {
+        json = JSON.parse(text);
+      } catch (e) {
+        throw new Error(
+          `model ${model} returned non-JSON: ${(e as Error).message}`,
+        );
+      }
+      const parseResult = OptimizerResponseZ.safeParse(json);
+      if (!parseResult.success) {
+        throw new Error(
+          `model ${model} schema validation failed: ${parseResult.error.issues
+            .map((i) => `${i.path.join(".")}: ${i.message}`)
+            .join("; ")}`,
+        );
+      }
+      const parsed = parseResult.data;
+
+      // Enforce SYSTEM_PROMPT rule #2: every reasoning item must cite at
+      // least one evidence checkpoint. Filter out hallucinated citations
+      // and drop items that cite none of the real evidence.
+      const reasoning: ReasoningItem[] = parsed.reasoning
+        .map((r) => ({
+          rule: r.rule,
+          checkpointIds: r.checkpointIds.filter((id) =>
+            validCheckpointIds.has(id),
+          ),
+          evidenceText: r.evidenceText,
+        }))
+        .filter((r) => r.checkpointIds.length > 0);
+      const droppedCount = parsed.reasoning.length - reasoning.length;
+      if (droppedCount > 0) {
+        console.warn(
+          `[llm] dropped ${droppedCount} reasoning item(s) with no valid checkpoint citation (model=${model})`,
+        );
+      }
+
       console.log(`[llm] optimized via ${model}`);
       return {
         targetFile: input.targetFile,
         afterText: parsed.afterText,
-        reasoning: parsed.reasoning ?? [],
+        reasoning,
       };
     } catch (e) {
       console.warn(

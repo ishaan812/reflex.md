@@ -19,6 +19,7 @@
   "dependencies": {
     "better-sqlite3": "^11.5.0",
     "electron-updater": "^6.3.9",
+    "posthog-js": "^1.369.3",
     "sudo-prompt": "^9.2.1",
     "ws": "^8.18.0"
   },

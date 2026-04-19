@@ -31,7 +31,13 @@ describe("parser — real entire-cli format", () => {
     expect(s0.turnId).toBe("413db266526b");
     expect(s0.branch).toBe("master");
     expect(s0.startedAt).toBe("2026-02-21T11:30:31.117538Z");
-    expect(s0.endedAt).toBeNull();
+    // endedAt is derived from the latest event timestamp when adapters emit one.
+    // For Claude Code each event has a top-level `timestamp`, so we expect a
+    // valid ISO string here (≥ startedAt).
+    expect(s0.endedAt).toBeTypeOf("string");
+    expect(Date.parse(s0.endedAt!)).toBeGreaterThanOrEqual(
+      Date.parse(s0.startedAt),
+    );
     expect(s0.filesTouched.length).toBeGreaterThan(0);
     expect(s0.prompt && s0.prompt.length).toBeGreaterThan(0);
     expect(s0.events.length).toBeGreaterThan(0);

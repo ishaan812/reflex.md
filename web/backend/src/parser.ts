@@ -8,6 +8,27 @@ import type {
   TokenUsage,
 } from "./types.js";
 
+export interface ParseWarning {
+  /** Location relative to the repo root (e.g. `18/a01d659c86` or `.../session 0`). */
+  path: string;
+  /** Short category: `checkpoint` for top-level failures, `session` for per-session. */
+  kind: "checkpoint" | "session";
+  message: string;
+}
+
+/**
+ * Collected during the last `parseCheckpointsBranch` run. Callers who care
+ * (e.g. the ingest endpoint) can read + reset via `takeParseWarnings()` so
+ * we can surface them in API responses instead of only logging.
+ */
+let pendingWarnings: ParseWarning[] = [];
+
+export function takeParseWarnings(): ParseWarning[] {
+  const w = pendingWarnings;
+  pendingWarnings = [];
+  return w;
+}
+
 /**
  * Walks the working tree of an `entire/checkpoints/v1` shadow branch and
  * returns the `limit` most recent checkpoints, newest first.
@@ -25,6 +46,7 @@ export function parseCheckpointsBranch(
   root: string,
   limit = 3,
 ): ParsedCheckpoint[] {
+  pendingWarnings = [];
   if (!existsSync(root)) return [];
   const shards = readdirSync(root).filter((s) => /^[0-9a-f]{2}$/i.test(s));
   const all: ParsedCheckpoint[] = [];
@@ -35,14 +57,15 @@ export function parseCheckpointsBranch(
     for (const rest of readdirSync(shardDir)) {
       const cpDir = join(shardDir, rest);
       if (!statSync(cpDir).isDirectory()) continue;
+      const cpId = `${shard}${rest}`;
       try {
-        const cp = parseOneCheckpoint(`${shard}${rest}`, cpDir);
+        const cp = parseOneCheckpoint(cpId, cpDir);
         if (cp) all.push(cp);
       } catch (e) {
+        const message = (e as Error).message;
+        pendingWarnings.push({ path: cpId, kind: "checkpoint", message });
         // eslint-disable-next-line no-console
-        console.warn(
-          `[parser] skipping ${shard}${rest}: ${(e as Error).message}`,
-        );
+        console.warn(`[parser] skipping ${cpId}: ${message}`);
       }
     }
   }
@@ -78,20 +101,40 @@ function parseOneCheckpoint(
     try {
       sessions.push(parseOneSession(Number(entry), sDir));
     } catch (e) {
+      const message = (e as Error).message;
+      pendingWarnings.push({
+        path: `${checkpointId}#${entry}`,
+        kind: "session",
+        message,
+      });
       // eslint-disable-next-line no-console
       console.warn(
-        `[parser] skipping session ${checkpointId}#${entry}: ${(e as Error).message}`,
+        `[parser] skipping session ${checkpointId}#${entry}: ${message}`,
       );
     }
   }
   sessions.sort((a, b) => a.index - b.index);
 
-  const createdAt = sessions.length
-    ? sessions
-        .map((s) => s.startedAt)
-        .sort()
-        .at(0)!
-    : new Date().toISOString();
+  // Preferred: earliest session startedAt.
+  // Fallbacks, in order:
+  //   1. The checkpoint metadata's own created_at / committed_at if present
+  //   2. The checkpoint dir's mtime
+  // We never fall back to `Date.now()` because that would misorder historical
+  // checkpoints with missing timestamps as "just now" and surface them in the
+  // take-3 window.
+  const createdAt =
+    (sessions.length
+      ? sessions
+          .map((s) => s.startedAt)
+          .filter(Boolean)
+          .sort()
+          .at(0)
+      : undefined) ??
+    (typeof meta?.created_at === "string" ? meta.created_at : undefined) ??
+    (typeof meta?.committed_at === "string" ? meta.committed_at : undefined) ??
+    safeMtime(metaPath) ??
+    safeMtime(dir) ??
+    new Date(0).toISOString();
 
   return {
     checkpointId,
@@ -102,6 +145,14 @@ function parseOneCheckpoint(
     tokenUsage,
     sessions,
   };
+}
+
+function safeMtime(path: string): string | undefined {
+  try {
+    return statSync(path).mtime.toISOString();
+  } catch {
+    return undefined;
+  }
 }
 
 function parseOneSession(idx: number, dir: string): ParsedSession {
@@ -126,6 +177,20 @@ function parseOneSession(idx: number, dir: string): ParsedSession {
     ? readFileSync(contextPath, "utf8")
     : null;
 
+  const startedAt: string =
+    (typeof meta?.created_at === "string" && meta.created_at) ||
+    safeMtime(metaPath) ||
+    safeMtime(dir) ||
+    new Date(0).toISOString();
+
+  // Derive endedAt from the latest event timestamp we can find in the raw
+  // stream. Two caveats:
+  //   1. Claude Code's JSONL often contains history from turns BEFORE the
+  //      current checkpoint's `created_at`, so the raw maximum can precede
+  //      startedAt. We clamp to `>= startedAt`.
+  //   2. If no usable timestamp exists at all, leave as null.
+  const endedAt = deriveEndedAt(events, startedAt);
+
   return {
     index: idx,
     sessionId: meta?.session_id ?? null,
@@ -135,14 +200,55 @@ function parseOneSession(idx: number, dir: string): ParsedSession {
     turnId: meta?.turn_id ?? null,
     filesTouched: Array.isArray(meta?.files_touched) ? meta.files_touched : [],
     tokenUsage: (meta?.token_usage as TokenUsage) ?? {},
-    startedAt: meta?.created_at ?? new Date().toISOString(),
-    endedAt: null, // entire-cli does not track this
+    startedAt,
+    endedAt,
     prompt,
     context,
     attribution: (meta?.initial_attribution as InitialAttribution) ?? null,
     summary: (meta?.summary as SessionSummaryBlock) ?? null,
     events,
   };
+}
+
+/**
+ * Best-effort latest-timestamp scan across raw agent events.
+ * Handles:
+ *  - Claude Code JSONL: each entry has `timestamp` (ISO string).
+ *  - OpenCode: each message has `info.time.updated` / `.created` (epoch ms).
+ */
+function deriveEndedAt(
+  events: unknown[],
+  startedAtIso: string | null,
+): string | null {
+  const startedMs =
+    startedAtIso && Number.isFinite(Date.parse(startedAtIso))
+      ? Date.parse(startedAtIso)
+      : null;
+  let maxMs = -Infinity;
+  const consider = (ms: number) => {
+    if (!Number.isFinite(ms)) return;
+    if (ms > maxMs) maxMs = ms;
+  };
+  const visit = (v: any) => {
+    if (!v || typeof v !== "object") return;
+    const ts = v.timestamp ?? v.ts;
+    if (typeof ts === "string") consider(Date.parse(ts));
+    const info = v.info;
+    if (info && typeof info === "object" && info.time) {
+      const t = info.time;
+      for (const key of ["completed", "updated", "created"]) {
+        const raw = (t as any)[key];
+        if (typeof raw === "number") consider(raw);
+        else if (typeof raw === "string") consider(Date.parse(raw));
+      }
+    }
+  };
+  for (const e of events) visit(e);
+  if (!Number.isFinite(maxMs)) return null;
+  // Clamp: events preceding startedAt are checkpoint-history noise, not the
+  // session's actual end.
+  if (startedMs != null && maxMs < startedMs) return startedAtIso;
+  return new Date(maxMs).toISOString();
 }
 
 /**

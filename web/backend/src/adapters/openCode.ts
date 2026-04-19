@@ -12,12 +12,14 @@ import type { NormalizedEvent } from "../types.js";
  *
  * Part types:
  *   { type: "text", text: string, time?: { created, completed } }
- *   { type: "tool-invocation", toolInvocation: { toolName, args, result, state } }
+ *   { type: "tool-invocation", toolInvocation: { toolCallId?, toolName, args, result, state } }
  *   { type: "step-start", snapshot?: { ... } }
  *   { type: "step-finish", reason, snapshot?, tokens?, cost? }
  *
  * One OpenCode message may fan out to multiple normalized events (e.g. an
- * assistant message with text + tool invocations).
+ * assistant message with text + tool invocations). For a completed
+ * tool-invocation we emit a PAIR of events: `tool_call` followed by
+ * `tool_result`, so friction.ts's retry detector can correlate them.
  */
 export function normalizeOpenCodeMessage(raw: any): NormalizedEvent[] {
   if (!raw || typeof raw !== "object") return [rawFallback(raw)];
@@ -25,7 +27,8 @@ export function normalizeOpenCodeMessage(raw: any): NormalizedEvent[] {
   const info = raw.info ?? {};
   const parts: any[] = Array.isArray(raw.parts) ? raw.parts : [];
   const role: string = info.role ?? "";
-  const ts = extractTimestamp(info);
+  const createdTs = extractTimestamp(info, "created");
+  const updatedTs = extractTimestamp(info, "updated") ?? createdTs;
 
   if (role === "user") {
     const textParts = parts
@@ -35,7 +38,7 @@ export function normalizeOpenCodeMessage(raw: any): NormalizedEvent[] {
     return [
       {
         kind: "user",
-        ts,
+        ts: createdTs,
         text: textParts.join("\n").trim() || undefined,
         raw,
       },
@@ -55,7 +58,16 @@ export function normalizeOpenCodeMessage(raw: any): NormalizedEvent[] {
       }
 
       if (part.type === "tool-invocation" && part.toolInvocation) {
-        events.push(toolCallFrom(part.toolInvocation, ts, raw));
+        const callCompletedTs =
+          extractTimestamp(part, "completed") ?? updatedTs;
+        for (const ev of eventsFromInvocation(
+          part.toolInvocation,
+          createdTs,
+          callCompletedTs,
+          raw,
+        )) {
+          events.push(ev);
+        }
         continue;
       }
 
@@ -66,7 +78,7 @@ export function normalizeOpenCodeMessage(raw: any): NormalizedEvent[] {
     if (textParts.length) {
       events.unshift({
         kind: "assistant",
-        ts,
+        ts: createdTs,
         text: textParts.join("\n").trim(),
         raw,
       });
@@ -75,45 +87,46 @@ export function normalizeOpenCodeMessage(raw: any): NormalizedEvent[] {
     if (events.length) return events;
 
     // Assistant message with no recognizable parts
-    return [{ kind: "assistant", ts, text: undefined, raw }];
+    return [{ kind: "assistant", ts: createdTs, text: undefined, raw }];
   }
 
-  return [rawFallback(raw, ts)];
+  return [rawFallback(raw, createdTs)];
 }
 
-function toolCallFrom(
+/**
+ * Expand a single tool-invocation part into the normalized event stream.
+ *
+ * - Always emits a `tool_call` (or `file_write` / `todo` lift) for the invocation.
+ * - If the invocation has reached a terminal state (`result` or `error`) we
+ *   additionally emit a `tool_result` with a derived exitCode.
+ *
+ * Exit-code derivation (in priority order):
+ *   1. `state === "error"` → 1
+ *   2. `result.error` truthy → 1
+ *   3. numeric `result.exitCode` / `result.exit_code` / `result.code` → as-is
+ *   4. shell-tool result text containing /error|failed|exit(?:ed)? (?:code|with) [1-9]/i → 1
+ *   5. otherwise → 0
+ */
+function eventsFromInvocation(
   inv: any,
-  ts: string | undefined,
+  callTs: string | undefined,
+  resultTs: string | undefined,
   raw: any,
-): NormalizedEvent {
-  const toolName: string = inv.toolName ?? "";
-  const args = inv.args ?? {};
-  const state: string = inv.state ?? "";
-  const result = inv.result;
+): NormalizedEvent[] {
+  const toolName: string = inv?.toolName ?? "";
+  const args = inv?.args ?? {};
+  const state: string = typeof inv?.state === "string" ? inv.state : "";
+  const result = inv?.result;
+  // Preserve a correlation id between call and result so findPrecedingToolCall
+  // can match them.
+  const toolUseId: string | undefined =
+    inv?.toolCallId ?? inv?.tool_call_id ?? inv?.id ?? undefined;
 
-  // If this is a completed tool invocation with a result, emit a tool_result
-  // when the state indicates completion.
-  if (state === "result" && result !== undefined) {
-    const text =
-      typeof result === "string"
-        ? result
-        : typeof result === "object" && result !== null
-          ? JSON.stringify(result)
-          : String(result ?? "");
-    return {
-      kind: "tool_result",
-      ts,
-      toolName,
-      text,
-      exitCode: 0,
-      raw,
-    };
-  }
-
-  const base: NormalizedEvent = {
+  const call: NormalizedEvent = {
     kind: "tool_call",
-    ts,
+    ts: callTs,
     toolName,
+    toolUseId,
     args,
     raw,
   };
@@ -126,32 +139,102 @@ function toolCallFrom(
     lowerName === "multiedit" ||
     lowerName === "multi_edit"
   ) {
-    base.path = args.file_path ?? args.path ?? args.filePath ?? args.filename;
-    base.kind = "file_write";
+    call.kind = "file_write";
+    call.path = args.file_path ?? args.path ?? args.filePath ?? args.filename;
     if (typeof args.content === "string") {
-      base.bytes = Buffer.byteLength(args.content, "utf8");
+      call.bytes = Buffer.byteLength(args.content, "utf8");
     }
-  }
-
-  if (lowerName === "todowrite" && Array.isArray(args.todos)) {
-    base.kind = "todo";
-    base.todos = (args.todos as any[]).map((t: any) => ({
-      content: String(t.content ?? ""),
-      status: String(t.status ?? "pending"),
-      priority: t.priority ? String(t.priority) : undefined,
+  } else if (lowerName === "todowrite" && Array.isArray(args.todos)) {
+    call.kind = "todo";
+    call.todos = (args.todos as any[]).map((t: any) => ({
+      content: String(t?.content ?? ""),
+      status: String(t?.status ?? "pending"),
+      priority: t?.priority ? String(t.priority) : undefined,
     }));
   }
 
-  return base;
+  const isTerminal =
+    state === "result" || state === "error" || result !== undefined;
+  if (!isTerminal) return [call];
+
+  const text = stringifyResult(result);
+  const exitCode = deriveExitCode(state, result, text);
+  const resultEvent: NormalizedEvent = {
+    kind: "tool_result",
+    ts: resultTs,
+    toolName,
+    toolUseId,
+    text,
+    exitCode,
+    raw,
+  };
+
+  return [call, resultEvent];
 }
 
-function extractTimestamp(info: any): string | undefined {
-  if (!info?.time) return undefined;
-  const time = info.time;
-  // OpenCode stores timestamps as epoch millis in { created, updated }
+function stringifyResult(result: unknown): string | undefined {
+  if (result == null) return undefined;
+  if (typeof result === "string") return result;
+  if (typeof result === "object") {
+    try {
+      return JSON.stringify(result);
+    } catch {
+      return String(result);
+    }
+  }
+  return String(result);
+}
+
+const ERROR_TEXT_RE =
+  /\b(error|failed|exit(?:ed)?\s+(?:code|with)\s+[1-9])\b/i;
+
+function deriveExitCode(
+  state: string,
+  result: any,
+  text: string | undefined,
+): number {
+  if (state === "error") return 1;
+  if (result && typeof result === "object") {
+    if (result.error) return 1;
+    const numeric =
+      typeof result.exitCode === "number"
+        ? result.exitCode
+        : typeof result.exit_code === "number"
+          ? result.exit_code
+          : typeof result.code === "number"
+            ? result.code
+            : null;
+    if (numeric !== null) return numeric;
+    // OpenCode's bash tool sometimes nests the exit code under result.metadata.
+    const meta = result.metadata;
+    if (meta && typeof meta === "object") {
+      if (typeof meta.exitCode === "number") return meta.exitCode;
+      if (typeof meta.exit_code === "number") return meta.exit_code;
+    }
+  }
+  if (typeof text === "string" && ERROR_TEXT_RE.test(text)) return 1;
+  return 0;
+}
+
+function extractTimestamp(
+  container: any,
+  prefer: "created" | "updated" | "completed" = "created",
+): string | undefined {
+  const time = container?.time ?? container?.info?.time;
+  if (time == null) return undefined;
   if (typeof time === "object") {
-    const ms = time.created ?? time.updated;
-    if (typeof ms === "number") return new Date(ms).toISOString();
+    const order =
+      prefer === "created"
+        ? ["created", "updated", "completed"]
+        : prefer === "updated"
+          ? ["updated", "created", "completed"]
+          : ["completed", "updated", "created"];
+    for (const key of order) {
+      const v = (time as any)[key];
+      if (typeof v === "number") return new Date(v).toISOString();
+      if (typeof v === "string" && v) return v;
+    }
+    return undefined;
   }
   if (typeof time === "string") return time;
   if (typeof time === "number") return new Date(time).toISOString();

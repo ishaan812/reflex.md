@@ -16,6 +16,28 @@ export interface InitialAttribution {
   agent_percentage?: number;
 }
 
+/**
+ * Auto-summarize output from entire-cli. Populated only when the repo has
+ * `strategy_options.summarize.enabled = true` and the `claude` CLI is
+ * authenticated. See entireio/cli checkpoint.Summary.
+ */
+export interface SessionSummaryBlock {
+  intent?: string;
+  outcome?: string;
+  friction?: string[];
+  open_items?: string[];
+  learnings?: {
+    repo?: string[];
+    workflow?: string[];
+    code?: Array<{
+      path?: string;
+      line?: number;
+      end_line?: number;
+      finding?: string;
+    }>;
+  };
+}
+
 export interface ParsedSession {
   index: number;
   sessionId: string | null;
@@ -30,6 +52,7 @@ export interface ParsedSession {
   prompt: string | null;
   context: string | null;
   attribution: InitialAttribution | null;
+  summary: SessionSummaryBlock | null;
   events: unknown[];
 }
 

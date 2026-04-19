@@ -47,6 +47,7 @@ model Session {
   prompt        String?   @db.Text
   context       String?   @db.Text
   attribution   Json?
+  summary       Json?
   frictionScore Float     @default(0)
 
   @@unique([repoId, checkpointId, idx])

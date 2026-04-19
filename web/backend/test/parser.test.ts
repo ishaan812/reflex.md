@@ -36,6 +36,9 @@ describe("parser — real entire-cli format", () => {
     expect(s0.prompt && s0.prompt.length).toBeGreaterThan(0);
     expect(s0.events.length).toBeGreaterThan(0);
     expect(s0.attribution?.total_committed).toBe(125);
+    // devlog's checkpoints were generated without auto-summarize enabled,
+    // so no summary block — parser should return null, not throw.
+    expect(s0.summary).toBeNull();
   });
 
   it("computes checkpoint createdAt from earliest session", () => {

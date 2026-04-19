@@ -4,6 +4,7 @@ import type {
   InitialAttribution,
   ParsedCheckpoint,
   ParsedSession,
+  SessionSummaryBlock,
   TokenUsage,
 } from "./types.js";
 
@@ -139,6 +140,7 @@ function parseOneSession(idx: number, dir: string): ParsedSession {
     prompt,
     context,
     attribution: (meta?.initial_attribution as InitialAttribution) ?? null,
+    summary: (meta?.summary as SessionSummaryBlock) ?? null,
     events,
   };
 }

@@ -1,12 +1,10 @@
 # Production overrides — use with:
 #   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 #
-# Adds: log limits, resource constraints, restart policies, SSL-ready port mapping
+# Adds: log limits, resource constraints, SSL-ready port mapping
 
 services:
   postgres:
-    environment:
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
     logging:
       driver: json-file
       options:
@@ -19,7 +17,6 @@ services:
 
   backend:
     environment:
-      DATABASE_URL: postgresql://reflex:${POSTGRES_PASSWORD}@postgres:5432/reflex
       NODE_ENV: production
     logging:
       driver: json-file

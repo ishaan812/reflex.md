@@ -51,6 +51,7 @@ export async function ingestRepo(
             prompt: s.prompt,
             context: s.context,
             attribution: (s.attribution ?? null) as any,
+            summary: (s.summary ?? null) as any,
           },
           create: {
             repoId: repo.id,
@@ -69,6 +70,7 @@ export async function ingestRepo(
             prompt: s.prompt,
             context: s.context,
             attribution: (s.attribution ?? null) as any,
+            summary: (s.summary ?? null) as any,
             frictionScore: fq,
           },
         });
@@ -92,6 +94,8 @@ export async function ingestRepo(
         filesTouched: true,
         tokenUsage: true,
         frictionScore: true,
+        prompt: true,
+        summary: true,
       },
     });
 

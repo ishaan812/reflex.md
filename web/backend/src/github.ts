@@ -62,6 +62,7 @@ repoRoutes.get("/sessions/:id", async (req: any, res, next) => {
       prompt: session.prompt,
       context: session.context,
       attribution: session.attribution,
+      summary: session.summary,
       events: session.events,
       normalizedEvents: normalized,
       repo: session.repo,

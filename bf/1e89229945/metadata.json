@@ -1,0 +1,37 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "bf1e89229945",
+  "strategy": "manual-commit",
+  "branch": "master",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "web/.env.example",
+    "web/backend/prisma/migrations/20260419081359_add_session_summary/migration.sql",
+    "web/backend/prisma/schema.prisma",
+    "web/backend/src/github.ts",
+    "web/backend/src/ingest.ts",
+    "web/backend/src/parser.ts",
+    "web/backend/src/types.ts",
+    "web/backend/test/parser.test.ts",
+    "web/docker-compose.prod.yml",
+    "web/frontend/src/api.ts",
+    "web/frontend/src/components/dashboard/EventDrawer.tsx",
+    "web/frontend/src/components/dashboard/SessionRow.tsx"
+  ],
+  "sessions": [
+    {
+      "metadata": "/bf/1e89229945/0/metadata.json",
+      "transcript": "/bf/1e89229945/0/full.jsonl",
+      "context": "/bf/1e89229945/0/context.md",
+      "content_hash": "/bf/1e89229945/0/content_hash.txt",
+      "prompt": "/bf/1e89229945/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 0,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 0,
+    "output_tokens": 0,
+    "api_call_count": 0
+  }
+}

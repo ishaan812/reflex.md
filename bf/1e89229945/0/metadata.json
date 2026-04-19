@@ -1,0 +1,43 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "bf1e89229945",
+  "session_id": "ses_25b7134e0ffehv7QGmVp7MQ9KR",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-19T08:19:47.572643Z",
+  "branch": "master",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "web/backend/prisma/migrations/20260419081359_add_session_summary/migration.sql",
+    "web/backend/src/ingest.ts",
+    "web/backend/src/types.ts",
+    "web/backend/test/parser.test.ts",
+    "web/docker-compose.prod.yml",
+    "web/frontend/src/components/dashboard/SessionRow.tsx",
+    "web/.env.example",
+    "web/backend/prisma/schema.prisma",
+    "web/backend/src/github.ts",
+    "web/backend/src/parser.ts",
+    "web/frontend/src/api.ts",
+    "web/frontend/src/components/dashboard/EventDrawer.tsx"
+  ],
+  "agent": "OpenCode",
+  "turn_id": "4d459823e7b0",
+  "checkpoint_transcript_start": 2,
+  "transcript_lines_at_start": 2,
+  "token_usage": {
+    "input_tokens": 0,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 0,
+    "output_tokens": 0,
+    "api_call_count": 0
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-19T08:19:47.555923Z",
+    "agent_lines": 362,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 362,
+    "agent_percentage": 100
+  }
+}

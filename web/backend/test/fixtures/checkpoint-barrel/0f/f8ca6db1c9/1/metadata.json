@@ -1,0 +1,13 @@
+{
+  "strategy_name": "claude-code",
+  "branch": "feat/signup",
+  "files_touched": ["src/auth/signup.ts"],
+  "token_usage": {
+    "input_tokens": 9000,
+    "cache_read_tokens": 5000,
+    "output_tokens": 2000,
+    "api_calls": 20
+  },
+  "started_at": "2026-04-18T15:00:00Z",
+  "ended_at": "2026-04-18T15:22:00Z"
+}

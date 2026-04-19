@@ -1,0 +1,4 @@
+{"type":"user_prompt","ts":"2026-04-18T15:00:00Z","role":"user","text":"Add a signup endpoint"}
+{"type":"agent_response","ts":"2026-04-18T15:00:20Z","role":"assistant","text":"Adding it via barrel export at src/auth/index.ts"}
+{"type":"user_prompt","ts":"2026-04-18T15:03:00Z","role":"user","text":"no, again — don't use barrel exports. Import directly."}
+{"type":"agent_response","ts":"2026-04-18T15:03:30Z","role":"assistant","text":"Got it, direct imports only."}

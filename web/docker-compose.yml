@@ -1,0 +1,20 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: reflex-postgres
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_USER: reflex
+      POSTGRES_PASSWORD: reflex
+      POSTGRES_DB: reflex
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U reflex -d reflex"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  pgdata: {}

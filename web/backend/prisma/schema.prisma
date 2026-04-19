@@ -1,0 +1,63 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id          String   @id @default(cuid())
+  githubLogin String   @unique
+  accessToken String
+  createdAt   DateTime @default(now())
+  repos       Repo[]
+}
+
+model Repo {
+  id            String     @id @default(cuid())
+  userId        String
+  user          User       @relation(fields: [userId], references: [id])
+  owner         String
+  name          String
+  defaultBranch String     @default("main")
+  sessions      Session[]
+  analyses      Analysis[]
+
+  @@unique([userId, owner, name])
+}
+
+model Session {
+  id            String    @id @default(cuid())
+  repoId        String
+  repo          Repo      @relation(fields: [repoId], references: [id])
+  checkpointId  String
+  idx           Int
+  strategy      String
+  branch        String?
+  startedAt     DateTime
+  endedAt       DateTime?
+  filesTouched  String[]
+  tokenUsage    Json
+  events        Json
+  frictionScore Float     @default(0)
+
+  @@unique([repoId, checkpointId, idx])
+}
+
+model Analysis {
+  id            String   @id @default(cuid())
+  repoId        String
+  repo          Repo     @relation(fields: [repoId], references: [id])
+  createdAt     DateTime @default(now())
+  frictionScore Float
+  targetFile    String
+  beforeText    String   @db.Text
+  afterText     String   @db.Text
+  unifiedDiff   String   @db.Text
+  reasoning     Json
+  clusters      Json
+  prNumber      Int?
+  prUrl         String?
+}

@@ -1,0 +1,36 @@
+{
+  "cli_version": "0.4.9",
+  "checkpoint_id": "90862d9ce658",
+  "session_id": "ses_25b1393edffe29LXjzyk29ql0F",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-19T10:51:48.185398Z",
+  "branch": "master",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "electron/package.json",
+    "web/backend/package.json",
+    "web/frontend/package.json",
+    "web/frontend/src/components/landing/Hero.tsx",
+    "web/frontend/src/pages/Download.tsx"
+  ],
+  "agent": "OpenCode",
+  "turn_id": "5bcc3224920f",
+  "checkpoint_transcript_start": 2,
+  "transcript_lines_at_start": 2,
+  "token_usage": {
+    "input_tokens": 0,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 0,
+    "output_tokens": 0,
+    "api_call_count": 0
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-19T10:51:48.182093Z",
+    "agent_lines": 5,
+    "human_added": 4176,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 4181,
+    "agent_percentage": 0.1195886151638364
+  }
+}
